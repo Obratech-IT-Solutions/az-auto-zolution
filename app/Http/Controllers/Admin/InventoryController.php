@@ -8,10 +8,11 @@ use App\Models\Inventory;    // ← use the Inventory model
 
 class InventoryController extends Controller
 {
+    private const PER_PAGE = 25;
+
     public function index(Request $request)
     {
-        // replicate your cashier logic, but passing to admin.inventory
-        $inventories = Inventory::orderBy('created_at', 'desc')->get();
+        $inventories = Inventory::paginateForIndex($request, self::PER_PAGE);
 
         return view('admin.inventory', compact('inventories'));
     }

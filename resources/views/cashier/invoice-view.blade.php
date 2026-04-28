@@ -320,7 +320,7 @@
       <table class="details-table">
       <tr>
         <td class="label">Name</td>
-        <td>{{ $invoice->client->name ?? $invoice->customer_name }}</td>
+        <td>{{ $invoice->resolvedCustomerName() }}</td>
       </tr>
       <tr>
         <td class="label">Plate No</td>
@@ -344,7 +344,7 @@
       </tr>
       <tr>
         <td class="label">Odometer</td>
-        <td style="color:#E40000">{{ $invoice->vehicle->odometer ?? '0' }}</td>
+        <td style="color:#E40000">@if($invoice->vehicle && trim((string) ($invoice->vehicle->odometer ?? '')) !== ''){{ $invoice->vehicle->odometer }}@else N/A @endif</td>
       </tr>
       </table>
       <table class="right-details-table">
@@ -368,7 +368,7 @@
       <tr>
         <td>Contact No.</td>
         <td>
-        {{ $invoice->number ?? $invoice->client->phone ?? '' }}
+        {{ $invoice->resolvedCustomerPhone() ?? '' }}
         </td>
       </tr>
       </table>
@@ -474,6 +474,44 @@
       <td><strong>Net Sales</strong></td>
       <td><strong>₱{{ number_format($net_sales, 2) }}</strong></td>
       </tr>
+      @if(($invoice->payment_cash_amount ?? null) !== null || ($invoice->payment_non_cash_amount ?? null) !== null)
+      <tr>
+      <td colspan="2"></td>
+      <td>Trans type</td>
+      <td>{{ ucfirst(str_replace('_', ' ', $invoice->payment_type ?? '—')) }}</td>
+      </tr>
+      <tr>
+      <td colspan="2"></td>
+      <td>Cash amount</td>
+      <td>₱{{ number_format((float) ($invoice->payment_cash_amount ?? 0), 2) }}</td>
+      </tr>
+      <tr>
+      <td colspan="2"></td>
+      <td>Cashless amount</td>
+      <td>₱{{ number_format((float) ($invoice->payment_non_cash_amount ?? 0), 2) }}</td>
+      </tr>
+      @if(($invoice->cash_tender_amount ?? null) !== null)
+      <tr>
+      <td colspan="2"></td>
+      <td>Amount given</td>
+      <td>₱{{ number_format((float) $invoice->cash_tender_amount, 2) }}</td>
+      </tr>
+      @endif
+      @if(($invoice->cash_change_amount ?? null) !== null)
+      <tr>
+      <td colspan="2"></td>
+      <td>Change</td>
+      <td>₱{{ number_format((float) $invoice->cash_change_amount, 2) }}</td>
+      </tr>
+      @endif
+      @if(($invoice->cashless_tender_amount ?? null) !== null)
+      <tr>
+      <td colspan="2"></td>
+      <td>Paid (cashless)</td>
+      <td>₱{{ number_format((float) $invoice->cashless_tender_amount, 2) }}</td>
+      </tr>
+      @endif
+      @endif
 
 
     </table>
@@ -481,7 +519,7 @@
 
     {{-- Client’s name centered --}}
     <div class="text-center mt-4">
-      <strong>{{ strtoupper($invoice->client->name ?? $invoice->customer_name) }}</strong>
+      <strong>{{ strtoupper($invoice->resolvedCustomerName()) }}</strong>
     </div>
     <div class="signature">CUSTOMER NAME & SIGNATURE</div>
     </div>

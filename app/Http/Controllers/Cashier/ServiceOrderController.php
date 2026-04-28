@@ -9,20 +9,23 @@ use App\Models\Client;
 use App\Models\Vehicle;
 use App\Models\Inventory;
 use App\Models\Technician;
+use App\Services\ClientVehicleResolver;
+use App\Support\CashierListLimits;
 use Illuminate\Support\Facades\DB;
 
 class ServiceOrderController extends Controller
 {
     public function index()
     {
-        $clients = Client::all();
-        $vehicles = Vehicle::all();
-        $parts = Inventory::all();
+        $clients = collect();
+        $vehicles = collect();
+        $parts = Inventory::selectForLineItems();
         $technicians = Technician::all();
 
         $history = Invoice::with(['client', 'vehicle'])
             ->where('source_type', 'service_order')
-            ->orderBy('created_at', 'desc')
+            ->latest('created_at')
+            ->limit(CashierListLimits::QUOTATION_SO_APPOINTMENT_HISTORY)
             ->get();
 
         return view('cashier.service-order', compact('clients', 'vehicles', 'parts', 'technicians', 'history'));
@@ -30,9 +33,9 @@ class ServiceOrderController extends Controller
 
     public function create()
     {
-        $clients = Client::all();
-        $vehicles = Vehicle::all();
-        $parts = Inventory::select('id', 'item_name', 'quantity', 'selling')->get(); // Select quantity as the remaining stock
+        $clients = collect();
+        $vehicles = collect();
+        $parts = Inventory::selectForLineItems();
         $technicians = Technician::all();
         $history = collect([]);
 
@@ -51,142 +54,86 @@ class ServiceOrderController extends Controller
             'year' => 'nullable|string',
             'color' => 'nullable|string',
             'odometer' => 'nullable|string',
-            'payment_type' => 'required|string'
+            'payment_type' => 'required|string',
+            'payment_cash_amount' => 'nullable|numeric|min:0',
+            'payment_non_cash_amount' => 'nullable|numeric|min:0'
         ]);
 
 
-        if ($request->customer_name) {
-            // Save manual customer as new client
-            $client = Client::firstOrCreate(
-                ['name' => $request->customer_name],
-                ['phone' => $request->number, 'address' => $request->address]
-            );
+        $resolver = app(ClientVehicleResolver::class);
+        $clientId = $resolver->resolveClientId($request);
+        $vehicleId = $resolver->resolveVehicleId($request, $clientId);
 
-            $clientId = $client->id;
-        } else {
-            $clientId = $request->client_id;
+        $manualCustomer = trim((string) $request->input('customer_name', ''));
+        if (Client::isPlaceholderLabel($manualCustomer)) {
+            $manualCustomer = '';
         }
 
-        // If vehicle_name is manually entered but not vehicle_id
-        if ($request->vehicle_name && !$request->vehicle_id) {
-            $vehicleId = null;
-        } else {
-            $vehicleId = $request->vehicle_id;
-        }
-
-
-        // Update client if missing phone or address
-        if ($clientId) {
-            $client = Client::find($clientId);
-            $updated = false;
-
-            if (!$client->phone && $request->number) {
-                $client->phone = $request->number;
-                $updated = true;
-            }
-
-            if (!$client->address && $request->address) {
-                $client->address = $request->address;
-                $updated = true;
-            }
-
-            if ($updated) {
-                $client->save();
-            }
-        }
-
-
-        // Vehicle logic
-
-        if ($vehicleId) {
-            $vehicle = Vehicle::find($vehicleId);
-            if ($vehicle) {
-                $vehicle->update([
-                    'plate_number' => $request->plate,
-                    'model' => $request->model,
-                    'year' => $request->year,
-                    'color' => $request->color,
-                    'odometer' => $request->odometer,
-                ]);
-            }
-        } else if ($request->plate || $request->model || $request->year || $request->color || $request->odometer) {
-            $vehicle = Vehicle::create([
-                'plate_number' => $request->plate,
-                'model' => $request->model,
-                'year' => $request->year,
-                'color' => $request->color,
-                'odometer' => $request->odometer,
+        DB::transaction(function () use ($request, $clientId, $vehicleId, $manualCustomer) {
+            $invoice = Invoice::create([
                 'client_id' => $clientId,
-
+                'vehicle_id' => $vehicleId,
+                'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
+                'vehicle_name' => $vehicleId ? null : $request->vehicle_name,
+                'source_type' => 'service_order',
+                'service_status' => 'pending',
+                'status' => 'unpaid',
+                'subtotal' => 0,
+                'total_discount' => 0,
+                'vat_amount' => 0,
+                'grand_total' => 0,
+                'payment_type' => $request->payment_type,
+                'payment_cash_amount' => $request->filled('payment_cash_amount') ? $request->payment_cash_amount : null,
+                'payment_non_cash_amount' => $request->filled('payment_non_cash_amount') ? $request->payment_non_cash_amount : null,
+                'number' => $request->number,
+                'address' => $request->address,
             ]);
-            $vehicleId = $vehicle->id;
-        } else {
-            $vehicleId = null;
-        }
 
-        $invoice = Invoice::create([
-            'client_id' => $clientId,
-            'vehicle_id' => $vehicleId,
-            'customer_name' => $request->customer_name,
-            'vehicle_name' => $request->vehicle_name,
-            'source_type' => 'service_order',
-            'service_status' => 'pending',
-            'status' => 'unpaid',
-            'subtotal' => 0,
-            'total_discount' => 0,
-            'vat_amount' => 0,
-            'grand_total' => 0,
-            'payment_type' => $request->payment_type,
-            'number' => $request->number,
-            'address' => $request->address,
-        ]);
-
-
-
-
-
-        // Save items (inventory OR manual)
-        if ($request->has('items')) {
-            foreach ($request->items as $item) {
-                $invoice->items()->create([
-                    'part_id' => $item['part_id'] ?? null,
-                    'manual_part_name' => $item['manual_part_name'] ?? null,
-                    'manual_serial_number' => $item['manual_serial_number'] ?? null,
-                    'manual_acquisition_price' => $item['manual_acquisition_price'] ?? null,
-                    'manual_selling_price' => $item['manual_selling_price'] ?? null,
-                    'quantity' => $item['quantity'],
-                    'original_price' => $item['original_price'] ?? ($item['manual_selling_price'] ?? 0),
-                    'line_total' => $item['quantity'] * ($item['original_price'] ?? ($item['manual_selling_price'] ?? 0)),
-                ]);
-
+            if ($request->has('items')) {
+                foreach ($request->items as $item) {
+                    $invoice->items()->create([
+                        'part_id' => $item['part_id'] ?? null,
+                        'manual_part_name' => $item['manual_part_name'] ?? null,
+                        'manual_serial_number' => $item['manual_serial_number'] ?? null,
+                        'manual_acquisition_price' => $item['manual_acquisition_price'] ?? null,
+                        'manual_selling_price' => $item['manual_selling_price'] ?? null,
+                        'quantity' => $item['quantity'],
+                        'original_price' => $item['original_price'] ?? ($item['manual_selling_price'] ?? 0),
+                        'line_total' => $item['quantity'] * ($item['original_price'] ?? ($item['manual_selling_price'] ?? 0)),
+                    ]);
+                }
             }
-        }
 
-        // Save jobs
-        if ($request->has('jobs')) {
-            foreach ($request->jobs as $job) {
-                $invoice->jobs()->create([
-                    'job_description' => $job['job_description'] ?? '',
-                    'technician_id' => $job['technician_id'] ?? null,
-                    'total' => $job['total'] ?? 0,
-                ]);
+            if ($request->has('jobs')) {
+                foreach ($request->jobs as $job) {
+                    $invoice->jobs()->create([
+                        'job_description' => $job['job_description'] ?? '',
+                        'technician_id' => $job['technician_id'] ?? null,
+                        'total' => $job['total'] ?? 0,
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->route('cashier.serviceorder.index')->with('success', 'Service Order created!');
     }
 
     public function edit($id)
     {
-        $invoice = Invoice::with(['items', 'jobs'])->findOrFail($id);
-        $clients = Client::all();
-        $vehicles = Vehicle::all();
-        $parts = Inventory::all();
+        $invoice = Invoice::with(['items', 'jobs', 'client', 'vehicle'])->findOrFail($id);
+        $clients = $invoice->client_id
+            ? Client::where('id', $invoice->client_id)->get(['id', 'name'])
+            : collect();
+        $vehicles = $invoice->vehicle_id
+            ? Vehicle::where('id', $invoice->vehicle_id)->get(['id', 'plate_number', 'model', 'client_id', 'year', 'color', 'odometer'])
+            : collect();
+        $parts = Inventory::selectForLineItems();
         $technicians = Technician::all();
 
         $history = Invoice::with(['client', 'vehicle'])
             ->where('source_type', 'service_order')
-            ->orderBy('created_at', 'desc')
+            ->latest('created_at')
+            ->limit(CashierListLimits::QUOTATION_SO_APPOINTMENT_HISTORY)
             ->get();
 
         return view('cashier.service-order', compact('invoice', 'clients', 'vehicles', 'parts', 'technicians', 'history'));
@@ -219,6 +166,8 @@ class ServiceOrderController extends Controller
             'vat_amount' => 'required|numeric',
             'grand_total' => 'required|numeric',
             'payment_type' => 'required|string',
+            'payment_cash_amount' => 'nullable|numeric|min:0',
+            'payment_non_cash_amount' => 'nullable|numeric|min:0',
             'number' => 'nullable|string',
             'address' => 'nullable|string',
 
@@ -228,107 +177,58 @@ class ServiceOrderController extends Controller
             $clientId = null;
             $vehicleId = null;
         } else {
-            $clientId = $request->client_id;
-            $vehicleId = $request->vehicle_id;
+            $resolver = app(ClientVehicleResolver::class);
+            $clientId = $resolver->resolveClientId($request);
+            $vehicleId = $resolver->resolveVehicleId($request, $clientId);
         }
 
-        // Update client if missing phone or address
-        if ($clientId) {
-            $client = Client::find($clientId);
-            $updated = false;
-
-            if (!$client->phone && $request->number) {
-                $client->phone = $request->number;
-                $updated = true;
-            }
-
-            if (!$client->address && $request->address) {
-                $client->address = $request->address;
-                $updated = true;
-            }
-
-            if ($updated) {
-                $client->save();
-            }
-        }
-
-
-
-        if ($vehicleId) {
-            $vehicle = Vehicle::find($vehicleId);
-            if ($vehicle) {
-                $vehicle->update([
-                    'plate_number' => $request->plate,
-                    'model' => $request->model,
-                    'year' => $request->year,
-                    'color' => $request->color,
-                    'odometer' => $request->odometer,
-                ]);
-            }
-        } else if ($request->plate || $request->model || $request->year || $request->color || $request->odometer) {
-            $vehicle = Vehicle::create([
-                'plate_number' => $request->plate,
-                'model' => $request->model,
-                'year' => $request->year,
-                'color' => $request->color,
-                'odometer' => $request->odometer,
+        DB::transaction(function () use ($request, $invoice, $clientId, $vehicleId) {
+            $invoice->update([
                 'client_id' => $clientId,
-
+                'vehicle_id' => $vehicleId,
+                'customer_name' => $request->customer_name,
+                'vehicle_name' => $request->vehicle_name,
+                'source_type' => 'service_order',
+                'service_status' => 'pending',
+                'status' => 'unpaid',
+                'subtotal' => $request->subtotal,
+                'total_discount' => $request->total_discount,
+                'vat_amount' => $request->vat_amount,
+                'grand_total' => $request->grand_total,
+                'payment_type' => $request->payment_type,
+                'payment_cash_amount' => $request->filled('payment_cash_amount') ? $request->payment_cash_amount : null,
+                'payment_non_cash_amount' => $request->filled('payment_non_cash_amount') ? $request->payment_non_cash_amount : null,
+                'number' => $request->number,
+                'address' => $request->address,
             ]);
-            $vehicleId = $vehicle->id;
-        } else {
-            $vehicleId = null;
-        }
 
-        $invoice->update([
-            'client_id' => $clientId,
-            'vehicle_id' => $vehicleId,
-            'customer_name' => $request->customer_name,
-            'vehicle_name' => $request->vehicle_name,
-            'source_type' => 'service_order',
-            'service_status' => 'pending',
-            'status' => 'unpaid',
-            'subtotal' => $request->subtotal,
-            'total_discount' => $request->total_discount,
-            'vat_amount' => $request->vat_amount,
-            'grand_total' => $request->grand_total,
-            'payment_type' => $request->payment_type,
-            'number' => $request->number,
-            'address' => $request->address,
-        ]);
-
-
-
-        // Update items (delete old, add new: inventory OR manual)
-        $invoice->items()->delete();
-        if ($request->has('items')) {
-            foreach ($request->items as $item) {
-                $invoice->items()->create([
-                    'part_id' => $item['part_id'] ?? null,
-                    'manual_part_name' => $item['manual_part_name'] ?? null,
-                    'manual_serial_number' => $item['manual_serial_number'] ?? null,
-                    'manual_acquisition_price' => $item['manual_acquisition_price'] ?? null,
-                    'manual_selling_price' => $item['manual_selling_price'] ?? null,
-                    'quantity' => $item['quantity'],
-                    'original_price' => $item['original_price'] ?? ($item['manual_selling_price'] ?? 0),
-                    'line_total' => $item['quantity'] * ($item['original_price'] ?? ($item['manual_selling_price'] ?? 0)),
-                ]);
-
+            $invoice->items()->delete();
+            if ($request->has('items')) {
+                foreach ($request->items as $item) {
+                    $invoice->items()->create([
+                        'part_id' => $item['part_id'] ?? null,
+                        'manual_part_name' => $item['manual_part_name'] ?? null,
+                        'manual_serial_number' => $item['manual_serial_number'] ?? null,
+                        'manual_acquisition_price' => $item['manual_acquisition_price'] ?? null,
+                        'manual_selling_price' => $item['manual_selling_price'] ?? null,
+                        'quantity' => $item['quantity'],
+                        'original_price' => $item['original_price'] ?? ($item['manual_selling_price'] ?? 0),
+                        'line_total' => $item['quantity'] * ($item['original_price'] ?? ($item['manual_selling_price'] ?? 0)),
+                    ]);
+                }
             }
-        }
 
-
-        // Update jobs (delete old, add new)
-        $invoice->jobs()->delete();
-        if ($request->has('jobs')) {
-            foreach ($request->jobs as $job) {
-                $invoice->jobs()->create([
-                    'job_description' => $job['job_description'] ?? '',
-                    'technician_id' => $job['technician_id'] ?? null,
-                    'total' => $job['total'] ?? 0,
-                ]);
+            $invoice->jobs()->delete();
+            if ($request->has('jobs')) {
+                foreach ($request->jobs as $job) {
+                    $invoice->jobs()->create([
+                        'job_description' => $job['job_description'] ?? '',
+                        'technician_id' => $job['technician_id'] ?? null,
+                        'total' => $job['total'] ?? 0,
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->route('cashier.serviceorder.index')->with('success', 'Service Order updated!');
     }
@@ -336,9 +236,11 @@ class ServiceOrderController extends Controller
     public function destroy($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $invoice->items()->delete();
-        $invoice->jobs()->delete();
-        $invoice->delete();
+        DB::transaction(function () use ($invoice) {
+            $invoice->items()->delete();
+            $invoice->jobs()->delete();
+            $invoice->delete();
+        });
 
         return redirect()->route('cashier.serviceorder.index')->with('success', 'Service Order deleted!');
     }
@@ -369,33 +271,46 @@ class ServiceOrderController extends Controller
 
     public function ajaxClients(Request $request)
     {
-        $search = $request->input('q');
-        $page = $request->input('page', 1);
+        $search = trim((string) $request->input('q', ''));
+        $page = max(1, (int) $request->input('page', 1));
         $perPage = 10;
 
-        $query = \App\Models\Client::query();
+        $query = Client::query()->select(['id', 'name', 'phone', 'address', 'email']);
 
-        if ($search) {
-            $query->where('name', 'like', "%{$search}%");
+        if ($search !== '') {
+            $like = '%' . addcslashes($search, '%_\\') . '%';
+            $query->where(function ($w) use ($like) {
+                $w->where('name', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhereHas('vehicles', fn ($vq) => $vq->where('plate_number', 'like', $like));
+            });
         }
 
-        $results = $query->paginate($perPage, ['*'], 'page', $page);
+        $results = $query
+            ->orderForSelect2Dropdown()
+            ->paginate($perPage, ['id', 'name', 'phone', 'address', 'email'], 'page', $page);
+
+        $ids = $results->pluck('id')->all();
+        $invNames = Client::latestInvoiceCustomerNameByClientId($ids);
+        $plates = Client::primaryVehiclePlateByClientId($ids);
 
         return response()->json([
-            'results' => $results->map(function ($client) {
+            'results' => $results->map(function (Client $client) use ($invNames, $plates) {
+                $plate = $plates->get($client->id);
+
                 return [
                     'id' => $client->id,
-                    'text' => $client->name,
+                    'text' => $client->select2Label($invNames->get($client->id), $plate),
                     'address' => $client->address,
-                    'number' => $client->phone, // change from $client->number to $client->phone
+                    'number' => $client->phone,
+                    'plate' => $plate,
                 ];
-            }),
+            })->values(),
             'pagination' => [
-                'more' => $results->hasMorePages()
-            ]
+                'more' => $results->hasMorePages(),
+            ],
         ]);
-
-
     }
 
 

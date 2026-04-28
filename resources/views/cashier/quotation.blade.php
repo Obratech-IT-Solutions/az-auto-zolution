@@ -94,6 +94,55 @@
     padding: 0.25rem 0.5rem;
     }
 
+    /* Items row: part picker shows full wrapped label (not single-line clip) */
+    #items-table td.item-cell-part {
+    vertical-align: top !important;
+    }
+
+    #items-table .inv-part-dd-wrap .input-group {
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    }
+
+    #items-table .inv-part-dd-wrap .select2-container {
+    flex: 1 1 auto;
+    min-width: 0;
+    }
+
+    #items-table .inv-part-dd-wrap .select2-container--default .select2-selection--single {
+    height: auto !important;
+    min-height: 38px;
+    }
+
+    #items-table .inv-part-dd-wrap .select2-container--default .select2-selection--single .select2-selection__rendered {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    padding-right: 1.75rem !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    }
+
+    #items-table .inv-part-dd-wrap .select2-container--default .select2-selection--single .select2-selection__arrow {
+    top: 0.65rem;
+    transform: none;
+    height: auto;
+    }
+
+    .inv-part-sel-lines {
+    display: block;
+    max-width: 100%;
+    }
+
+    .inv-part-sel-lines .inv-part-sel-meta {
+    display: block;
+    font-size: 0.72rem;
+    color: #5c6770;
+    margin-top: 0.15rem;
+    font-weight: 400;
+    }
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
     height: 38px;
     right: 10px;
@@ -120,19 +169,89 @@
     transition: background-color 0.3s;
     }
 
+    /* Cap list height so the menu stays on-screen; scroll inside the list */
     .select2-results__options {
-    max-height: 250px !important;
+    max-height: min(280px, 45vh) !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     }
 
-    /* Optional: Prevent overlapping with other dropdowns or modals */
-    .select2-dropdown {
-    z-index: 10060 !important;
+    .select2-results__option {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
     }
 
-    .select2-container--default .select2-results__option--highlighted {
-    background-color: #4a90e2;
-    color: white;
+    .select2-results__option:last-child .inv-part-opt.border-bottom {
+    border-bottom: none !important;
+    }
+
+    /* Green/yellow part dropdown — ONLY inside Items .inv-part-dd-wrap (not client/vehicle selects) */
+    .inv-part-dd-wrap .select2-dropdown {
+    z-index: 1060 !important;
+    width: 100% !important;
+    min-width: min(100%, 28rem);
+    border: 1px solid #bbf7d0;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 1rem rgba(22, 101, 52, 0.12);
+    background: #ffffff;
+    }
+
+    .inv-part-dd-wrap .inv-part-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.35rem;
+    border: 1px solid #bbf7d0;
+    background: #ecfdf5;
+    color: #166534;
+    }
+
+    .inv-part-dd-wrap .inv-part-badge-pop {
+    border-color: #fde047;
+    background: #fef9c3;
+    color: #713f12;
+    }
+
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted {
+    background-color: #d1fae5 !important;
+    color: #14532d !important;
+    }
+
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-code {
+    color: #047857 !important;
+    font-weight: 650;
+    }
+
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-title {
+    color: #064e3b !important;
+    }
+
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-badge-stk {
+    background: #ffffff !important;
+    border: 1px solid #4ade80 !important;
+    color: #14532d !important;
+    }
+
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-badge-pop {
+    background: #fef08a !important;
+    border: 1px solid #eab308 !important;
+    color: #713f12 !important;
+    }
+
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .badge {
+    background: #ffffff !important;
+    border: 1px solid #86efac !important;
+    color: #14532d !important;
+    }
+
+    .inv-part-dd-wrap .select2-search--dropdown .select2-search__field {
+    margin: 0.25rem 0.5rem 0.5rem;
+    width: calc(100% - 1rem) !important;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.4rem;
+    border: 1px solid #bbf7d0;
+    background: #fff;
     }
 
     .select2-container {
@@ -143,16 +262,55 @@
     position: relative;
     }
 
-    #items-table td:first-child,
-    #items-table th:first-child {
+    #items-table th.item-drag-col,
+    #items-table td.item-drag-col {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.75rem;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+    vertical-align: middle;
+    }
+
+    .item-drag-handle {
+    cursor: grab;
+    touch-action: none;
+    }
+
+    .item-drag-handle:active {
+    cursor: grabbing;
+    }
+
+    #items-table tbody tr.sortable-ghost {
+    opacity: 0.55;
+    }
+
+    #items-table td.item-cell-part,
+    #items-table th.item-cell-part {
     width: 300px;
     min-width: 250px;
     max-width: 350px;
     }
 
-    /* Force select2 inside that column to stay within limits */
+    /* Force select2 inside item column */
     #items-table .select2-container {
     width: 100% !important;
+    }
+
+    #items-table td.item-cell-part .inv-part-dd-wrap {
+    width: 100%;
+    min-width: 0;
+    }
+
+    /* Verified H1-sibling-stacking: items card had z-index auto — Select2 dropdown z-index applied only inside that context, so Jobs/Totals siblings painted over the menu. Lift Items above following cards; keep z-index < BS modal (1055). */
+    #quote-items-card {
+    position: relative;
+    z-index: 40;
+    }
+    #quote-jobs-card,
+    #quote-totals-card {
+    position: relative;
+    z-index: 1;
     }
   </style>
   <div class="container mt-4">
@@ -226,13 +384,15 @@
         </div>
         <div class="col-md-2">
         <label class="form-label">Payment Type</label>
-        <select name="payment_type" class="form-select" style="background:#e6ffe3">
+        <select name="payment_type" id="quote_payment_type" class="form-select" style="background:#e6ffe3">
           <option value="cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'cash')>Cash</option>
           <option value="debit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'debit')>Debit</option>
           <option value="credit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'credit')>Credit
           </option>
           <option value="non_cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'non_cash')>Non Cash
           </option>
+          <option value="split" @selected(old('payment_type', $invoice->payment_type ?? '') == 'split')>Split payment</option>
+          <option value="gcash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'gcash')>G-Cash</option>
         </select>
         </div>
         <div class="col-md-2">
@@ -249,15 +409,15 @@
     </div>
 
     {{-- -------------------- Items Table -------------------- --}}
-    <div class="card mb-4 shadow-sm">
+    <div class="card mb-4 shadow-sm" id="quote-items-card">
       <div class="card-header">Items</div>
       <div class="card-body p-0">
       <table class="table mb-0" id="items-table">
         <thead>
         <tr>
-          <th style="min-width:250px;">Item</th>
+          <th class="item-drag-col text-center" title="Drag rows to reorder"><span class="visually-hidden">Reorder</span></th>
+          <th class="item-cell-part">Item</th>
           <th>Qty</th>
-          <th>Acq. ₱</th> <!-- NEW -->
           <th>Price ₱</th>
           <th>Discounted ₱</th>
           <th>Total ₱</th>
@@ -267,7 +427,7 @@
         <tbody></tbody>
         <tfoot>
         <tr>
-          <td colspan="5" class="text-end p-2">
+          <td colspan="7" class="text-end p-2">
           <button type="button" id="add-item" class="btn btn-success btn-add shadow-sm">+ Add Item</button>
           </td>
         </tr>
@@ -277,7 +437,7 @@
     </div>
 
     {{-- -------------------- Jobs Table -------------------- --}}
-    <div class="card mb-4 shadow-sm">
+    <div class="card mb-4 shadow-sm" id="quote-jobs-card">
       <div class="card-header">Jobs</div>
       <div class="card-body p-0">
       <table class="table mb-0" id="jobs-table">
@@ -302,7 +462,7 @@
     </div>
 
     {{-- -------------------- Totals -------------------- --}}
-    <div class="card mb-5 shadow-sm">
+    <div class="card mb-5 shadow-sm" id="quote-totals-card">
       <div class="card-header">Totals Summary</div>
       <div class="card-body">
       <div class="row g-3">
@@ -324,6 +484,24 @@
         <div class="col-md-3">
         <label class="form-label fw-bold">Grand Total</label>
         <input type="number" step="0.01" name="grand_total" class="form-control" readonly>
+        </div>
+        <div id="quote-split-section" class="col-12 mt-2 pt-3 border-top @if(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '') !== 'split') d-none @endif">
+        <label class="form-label fw-bold text-muted">Split payment breakdown</label>
+        <p class="small text-muted mb-2">Cash + cashless should match <strong>Grand Total</strong> when recording a split.</p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Cash amount (₱)</label>
+            <input type="number" step="0.01" name="payment_cash_amount"
+              value="{{ old('payment_cash_amount', isset($invoice) ? $invoice->payment_cash_amount : '') }}"
+              class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Cashless amount (₱)</label>
+            <input type="number" step="0.01" name="payment_non_cash_amount"
+              value="{{ old('payment_non_cash_amount', isset($invoice) ? $invoice->payment_non_cash_amount : '') }}"
+              class="form-control">
+          </div>
+        </div>
         </div>
       </div>
       </div>
@@ -409,27 +587,19 @@
   </div>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
   <script>
     $(function () {
-    window.parts = @json($parts); // ✅ expose globally
+    window.quotationPartsPrefill = @json((object) ($partsPrefill ?? []));
 
     const technicians = @json($technicians);
-    const clients = @json($clients);
-    const vehicles = @json($vehicles);
+    const partsAjaxUrl = @json(route('cashier.quotation.ajax.parts'));
 
     // Autofill contact
     $('[name="number"], [name="address"]').data('manual', false).on('input', function () {
       $(this).data('manual', true);
     });
-
-    function autofillContact() {
-      const clientId = $('#client_id').val();
-      const client = clients.find(c => c.id == clientId);
-      if (!client) return;
-      if (!$('[name="number"]').data('manual')) $('[name="number"]').val(client.phone || '');
-      if (!$('[name="address"]').data('manual')) $('[name="address"]').val(client.address || '');
-    }
 
     $('#client_id').select2({
       ajax: {
@@ -465,38 +635,56 @@
       if (!$('[name="address"]').data('manual')) {
       $('[name="address"]').val(data.address || '');
       }
+      $('#vehicle_id').val(null).trigger('change');
     });
-
 
     $('#vehicle_id').select2({
       placeholder: '-- search vehicle --',
-      allowClear: true
-
+      allowClear: true,
+      ajax: {
+      url: '{{ route("cashier.ajax.vehicles") }}',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({
+      q: params.term || '',
+      client_id: $('#client_id').val() || ''
+      }),
+      processResults: data => ({
+      results: data.map(v => ({
+        id: v.id,
+        text: v.plate_number,
+        plate_number: v.plate_number,
+        model: v.model,
+        year: v.year,
+        color: v.color,
+        odometer: v.odometer
+      }))
+      })
+      }
     });
 
-    $('#client_id').on('change', function () {
-      const clientId = $(this).val();
-      const filtered = vehicles.filter(v => v.client_id == clientId);
-      $('#vehicle_id').empty().append(`<option value="">— walk-in or choose —</option>`);
-      filtered.forEach(v => {
-      $('#vehicle_id').append(`<option value="${v.id}" data-plate="${v.plate_number || ''}"
-      data-model="${v.model || ''}" data-year="${v.year || ''}" data-color="${v.color || ''}"
-      data-odometer="${v.odometer || ''}">${v.plate_number}</option>`);
+    $('#vehicle_id').on('select2:select', function (e) {
+      const v = e.params.data;
+      $('#plate').val(v.plate_number || '');
+      $('#model').val(v.model || '');
+      $('#year').val(v.year || '');
+      $('#color').val(v.color || '');
+      $('#odometer').val(v.odometer || '');
+    });
+
+    function reindexQuotationItemRows() {
+      $('#items-table tbody tr').each(function (newIdx) {
+        $(this).find('[name]').each(function () {
+          const n = this.getAttribute('name');
+          if (!n || n.indexOf('items[') !== 0) return;
+          const newName = n.replace(/^items\[\d+]/, 'items[' + newIdx + ']');
+          if (newName !== n) this.setAttribute('name', newName);
+        });
       });
-      $('#vehicle_id').select2({ placeholder: '-- search vehicle --', allowClear: true });
-    });
-
-    $('#vehicle_id').on('change', function () {
-      let s = $(this).find(':selected');
-      $('#plate').val(s.data('plate') || '');
-      $('#model').val(s.data('model') || '');
-      $('#year').val(s.data('year') || '');
-      $('#color').val(s.data('color') || '');
-      $('#odometer').val(s.data('odometer') || '');
-    });
+    }
 
     @if(isset($invoice) && $invoice->client)
-    const clientOption = new Option("{{ $invoice->client->name }}", "{{ $invoice->client->id }}", true, true);
+    const clientOption = new Option(@json($invoice->client->select2Label($invoice->customer_name, optional($invoice->vehicle)->plate_number)), @json((string) $invoice->client->id), true, true);
     $('#client_id').append(clientOption).trigger('change');
     @endif
 
@@ -522,7 +710,13 @@
 
       const row = $(`
     <tr>
-    <td>
+    <td class="item-drag-col align-middle text-center">
+      <button type="button" class="btn btn-link btn-sm item-drag-handle p-0 text-secondary" title="Drag to reorder" aria-label="Drag to reorder row">
+        <i class="fas fa-grip-vertical"></i>
+      </button>
+    </td>
+    <td class="item-cell-part">
+    <div class="inv-part-dd-wrap position-relative">
     <div class="input-group">
       <select name="items[${idx}][part_id]" class="form-select form-select-sm part-select" style="width:100%">
       <option value="">-- search part --</option>
@@ -532,22 +726,20 @@
     <div class="manual-fields mt-2 d-none">
       <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" placeholder="Part Name">
       <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" placeholder="Serial #">
-      <input type="number" name="items[${idx}][manual_acquisition_price]" class="form-control form-control-sm mb-1" placeholder="Acquisition ₱">
+      <input type="hidden" name="items[${idx}][manual_acquisition_price]" value="">
       <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" placeholder="Selling ₱">
       <div class="d-flex gap-2">
       <button type="button" class="btn btn-sm btn-secondary cancel-manual">Cancel</button>
       <button type="button" class="btn btn-sm btn-success save-manual">Save</button>
       </div>
     </div>
+    <input type="hidden" name="items[${idx}][acquisition_price]" value="">
+    </div>
     </td>
     <td><input name="items[${idx}][quantity]" type="number" class="form-control form-control-sm" value="${qty}"></td>
-    <td><input name="items[${idx}][acquisition_price]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.acquisition_price || ''}"></td>
     <td><input name="items[${idx}][original_price]" type="number" step="0.01" class="form-control form-control-sm" value="${orig}"></td>
     <td><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.discount_value || ''}"></td>
-    <td class="col-line-total text-end">0.00</td>
-    <input type="hidden" name="items[${idx}][discounted_price]" value="0.00">
-
-
+    <td class="col-line-total text-end"><span class="line-total-amount">${lineTotal}</span><input type="hidden" name="items[${idx}][discounted_price]" value="0.00"></td>
     <td><button type="button" class="btn btn-sm btn-danger remove-btn">✕</button></td>
     </tr>`);
 
@@ -559,67 +751,157 @@
         row.find('.input-group').addClass('d-none');
       });
 
-      const select2Data = [
-        { id: '', text: '-- search part --', price: 0, acquisition: 0 },
-        ...parts.map(p => ({
-        id: p.id,
-        text: `${p.item_name} (${p.part_number || 'N/A'}) - Stock: ${p.quantity}`,
-        search: `${p.item_name} ${p.part_number}`, // searchable content
-        price: +p.selling,
-        acquisition: +p.acquisition_price,
-        disabled: p.quantity == 0
-        }))
-      ];
-
-
       const $partSelect = row.find('.part-select').select2({
-        data: select2Data,
         placeholder: '-- search part --',
         allowClear: true,
-        width: 'resolve',
-        dropdownParent: $('#items-table'),
-        matcher: function (params, data) {
-        if ($.trim(params.term) === '') return data;
-
-        if (typeof data.search === 'undefined') return null;
-
-        if (data.search.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
-          return data;
-        }
-
-        return null;
+        width: '100%',
+        dropdownParent: row.find('.inv-part-dd-wrap'),
+        minimumInputLength: 0,
+        ajax: {
+          url: partsAjaxUrl,
+          dataType: 'json',
+          delay: 250,
+          data: function (params) {
+            return { q: params.term || '', page: params.page || 1 };
+          },
+          processResults: function (data, params) {
+            params.page = params.page || 1;
+            return {
+              results: data.results,
+              pagination: { more: data.pagination.more }
+            };
+          },
+          cache: true
         },
         templateResult: function (data) {
-        if (!data.id) return data.text;
-        if (data.disabled) {
-          return $('<span style="color:red;">' + data.text + ' (Out of stock)</span>');
-        }
-        return data.text;
+          if (!data) return $('<span>');
+          if (data.loading) {
+            return $('<span class="small text-muted">').text('Loading…');
+          }
+          const id = data.id;
+          if (id === '' || id === null || typeof id === 'undefined') {
+            return $('<span class="small text-muted">').text(data.text || '');
+          }
+          if (data.disabled) {
+            return $('<div class="small px-1 py-2 text-danger">').text((data.text || '') + ' (Out of stock)');
+          }
+          const num = (data.part_number != null && String(data.part_number).trim() !== '')
+            ? String(data.part_number).trim() : 'N/A';
+          const title = data.item_name || data.text || '';
+          const stk = data.stock !== undefined && data.stock !== null ? Number(data.stock) : NaN;
+          const sold = Number(data.usage_sum || 0);
+          const $wrap = $('<div>', { class: 'inv-part-opt px-2 py-2 border-bottom border-light' });
+          const $head = $('<div>', { class: 'inv-part-head lh-sm mb-2' });
+          $head.append($('<span>', { class: 'inv-part-code fw-medium font-monospace' }).text('[' + num + ']'));
+          $head.append(document.createTextNode(' '));
+          $head.append($('<span>', { class: 'inv-part-title fw-semibold' }).text(title));
+          $wrap.append($head);
+          const badgeRow = $('<div>', { class: 'd-flex flex-wrap gap-2 align-items-center' });
+          badgeRow.append($('<span>', { class: 'inv-part-badge inv-part-badge-stk' }).text(isNaN(stk) ? 'Stock —' : ('Stock ' + stk)));
+          if (sold > 0) {
+            badgeRow.append($('<span>', { class: 'inv-part-badge inv-part-badge-pop' }).text('Popular · Sold ×' + sold));
+          }
+          $wrap.append(badgeRow);
+          return $wrap;
+        },
+        templateSelection: function (data) {
+          if (!data || !data.id) {
+            return $('<span>').text(data && data.text ? data.text : '-- search part --');
+          }
+          var num = (data.part_number != null && String(data.part_number).trim() !== '')
+            ? String(data.part_number).trim() : 'N/A';
+          var title = data.item_name;
+          if (!title && data.text) {
+            var trimmed = String(data.text).replace(/^\[[^\]]+\]\s*/, '');
+            title = trimmed.split(/\s*[·]\s*(?:Stk|Stock)/)[0].trim() || trimmed;
+          }
+          var stk = data.stock !== undefined && data.stock !== null ? Number(data.stock) : NaN;
+          var sold = Number(data.usage_sum || 0);
+          var meta = [];
+          if (!isNaN(stk)) {
+            meta.push('Stk: ' + stk);
+          }
+          if (sold > 0) {
+            meta.push('Sold: ' + sold);
+          }
+          var outOf = !!data.disabled;
+          var $root = $('<div>', { class: 'inv-part-sel-lines small fw-semibold' });
+          $root.css({ color: outOf ? '#b02a37' : 'inherit' });
+          $root.append(document.createTextNode('[' + num + '] ' + (title || '')));
+          if (meta.length) {
+            $root.append($('<span>', {
+              class: 'inv-part-sel-meta',
+              text: meta.join(' · ')
+            }));
+          }
+          return $root;
         }
       })
-
         .on('select2:select', e => {
-        row.find('[name$="[original_price]"]').val(e.params.data.price.toFixed(2));
-        row.find('[name$="[acquisition_price]"]').val(e.params.data.acquisition.toFixed(2));
-        row.find('[name$="[quantity]"]').val(1);
-        recalc();
+          const d = e.params.data;
+          row.find('[name$="[original_price]"]').val(Number(d.price || 0).toFixed(2));
+          row.find('[name$="[acquisition_price]"]').val(Number(d.acquisition || 0).toFixed(2));
+          row.find('[name$="[quantity]"]').val(1);
+          recalc();
         })
         .on('select2:clear', () => {
-        row.find('[name$="[original_price]"]').val('');
-        recalc();
+          row.find('[name$="[original_price]"]').val('');
+          row.find('[name$="[acquisition_price]"]').val('');
+          recalc();
+        })
+        // #region agent log
+        .on('select2:open', function () {
+          requestAnimationFrame(function () {
+            var items = document.getElementById('quote-items-card');
+            var jobs = document.getElementById('quote-jobs-card');
+            var totals = document.getElementById('quote-totals-card');
+            var dd = row.find('.inv-part-dd-wrap .select2-dropdown').get(0);
+            var cs = function (el) { return el ? window.getComputedStyle(el) : null; };
+            fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
+              body: JSON.stringify({
+                sessionId: 'c4fe64',
+                location: 'quotation.blade.php:select2:open',
+                message: 'part dropdown stacking snapshot',
+                hypothesisId: 'H1-sibling-stacking',
+                runId: 'post-fix-verify',
+                data: {
+                  ddZ: dd && cs(dd).zIndex,
+                  ddPos: dd && cs(dd).position,
+                  itemsZ: items && cs(items).zIndex,
+                  itemsPos: items && cs(items).position,
+                  itemsIsolation: items && cs(items).isolation,
+                  jobsZ: jobs && cs(jobs).zIndex,
+                  totalsZ: totals && cs(totals).zIndex
+                },
+                timestamp: Date.now()
+              })
+            }).catch(function () {});
+          });
         });
+        // #endregion
 
       if (partId) {
-        $partSelect.val(partId).trigger('change');
-        const sel = select2Data.find(o => o.id == partId);
-        if (sel) row.find('[name$="[original_price]"]').val(sel.price.toFixed(2));
+        const pre = window.quotationPartsPrefill && window.quotationPartsPrefill[String(partId)];
+        if (pre) {
+          const opt = new Option(pre.text, String(pre.id), true, true);
+          $partSelect.append(opt);
+        } else {
+          $partSelect.append(new Option('Part #' + partId, String(partId), true, true));
+        }
+        $partSelect.trigger('change');
+        if (pre) {
+          row.find('[name$="[original_price]"]').val(Number(pre.price).toFixed(2));
+          row.find('[name$="[acquisition_price]"]').val(Number(pre.acquisition).toFixed(2));
+        }
       }
 
 
 
 
       row.find('[name$="[quantity]"], [name$="[original_price]"]').on('input', recalc);
-      row.find('.remove-btn').on('click', () => { row.remove(); recalc(); });
+      row.find('.remove-btn').on('click', () => { row.remove(); reindexQuotationItemRows(); recalc(); });
       if (data?.manual_part_name) {
         row.find('.manual-fields').removeClass('d-none');
         row.find('.input-group').addClass('d-none');
@@ -635,25 +917,23 @@
 
       row.find('.cancel-manual').on('click', () => { row.find('.manual-fields').addClass('d-none'); row.find('.input-group').removeClass('d-none'); });
       row.find('.save-manual').on('click', () => {
+        const curIdx = row.index();
         const partName = row.find('[name$="[manual_part_name]"]').val() || '';
         const serial = row.find('[name$="[manual_serial_number]"]').val() || '';
-        const acq = parseFloat(row.find('[name$="[manual_acquisition_price]"]').val()) || 0;
         const sell = parseFloat(row.find('[name$="[manual_selling_price]"]').val()) || 0;
+        const acq = parseFloat(row.find('[name$="[manual_acquisition_price]"]').val()) || 0;
 
         row.find('[name$="[original_price]"]').val(sell.toFixed(2));
         row.find('[name$="[quantity]"]').val(1);
         row.find('[name$="[acquisition_price]"]').val(acq.toFixed(2));
 
-        // replace the entire cell with plain inputs
-        row.find('td').first().html(`
-    <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${partName}" placeholder="Part Name" readonly>
-    <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${serial}" placeholder="Serial #" readonly>
-    <input type="number" name="items[${idx}][manual_acquisition_price]" class="form-control form-control-sm mb-1" value="${acq}" placeholder="Acquisition ₱" readonly>
-    <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" value="${sell}" placeholder="Selling ₱" readonly>
-    </td>
+        row.find('td.item-cell-part').first().html(`
+    <input type="text" name="items[${curIdx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${String(partName).replace(/"/g, '&quot;')}" placeholder="Part Name" readonly>
+    <input type="text" name="items[${curIdx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${String(serial).replace(/"/g, '&quot;')}" placeholder="Serial #" readonly>
+    <input type="hidden" name="items[${curIdx}][manual_acquisition_price]" value="${acq}">
+    <input type="hidden" name="items[${curIdx}][acquisition_price]" value="${acq}">
+    <input type="number" name="items[${curIdx}][manual_selling_price]" class="form-control form-control-sm mb-1" value="${sell}" placeholder="Selling ₱" readonly>
     `);
-
-
 
         recalc();
       });
@@ -691,7 +971,7 @@
       const t = q * p;
       itemsTotal += t;
       $(this).find('[name$="[discounted_price]"]').val(t.toFixed(2)); // set discounted_price = line_total
-      $(this).find('.col-line-total').text(t.toFixed(2));
+      $(this).find('.line-total-amount').text(t.toFixed(2));
 
 
 
@@ -714,6 +994,13 @@
     $('#add-job').on('click', () => addJobRow());
     $('[name="total_discount"]').on('input', recalc);
 
+    function toggleQuoteSplitPayment() {
+      var v = $('select[name="payment_type"]').val();
+      $('#quote-split-section').toggleClass('d-none', v !== 'split');
+    }
+    $('select[name="payment_type"]').on('change', toggleQuoteSplitPayment);
+    toggleQuoteSplitPayment();
+
     $('#quoteForm').on('submit', function (e) {
       let hasBlankJob = false;
       $('#jobs-table tbody tr').each(function () {
@@ -725,21 +1012,33 @@
       }
     });
 
-    @if(!empty($invoice) && $invoice->items && $invoice->items->count())
+    @if(isset($invoice) && optional($invoice->items)->count())
       @foreach($invoice->items as $item)
       addItemRow(@json($item));
       @endforeach
-    @else
+    @elseif(!isset($invoice))
     addItemRow();
     @endif
 
-    @if(!empty($invoice) && $invoice->jobs && $invoice->jobs->count())
+    @if(isset($invoice) && optional($invoice->jobs)->count())
       @foreach($invoice->jobs as $job)
       addJobRow(@json($job));
       @endforeach
-    @else
-    addJobRow();
     @endif
+
+    const itemsTbody = document.querySelector('#items-table tbody');
+    if (itemsTbody && typeof Sortable !== 'undefined') {
+      Sortable.create(itemsTbody, {
+        handle: '.item-drag-handle',
+        animation: 150,
+        draggable: 'tr',
+        ghostClass: 'sortable-ghost',
+        onEnd: function () {
+          reindexQuotationItemRows();
+          recalc();
+        }
+      });
+    }
 
     recalc();
     });
@@ -784,8 +1083,27 @@
 
 
   @if(session('success'))
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1090">
+      <div id="quotationSavedToast"
+        class="toast align-items-center text-white bg-success border-0 shadow"
+        role="alert" aria-live="polite" aria-atomic="true"
+        data-bs-delay="4000" data-bs-autohide="true">
+        <div class="d-flex">
+          <div class="toast-body fw-semibold d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill fs-5" aria-hidden="true"></i>
+            <span>Saved</span>
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    </div>
     <script>
-    alert("{{ session('success') }}");
+    document.addEventListener('DOMContentLoaded', function () {
+      var el = document.getElementById('quotationSavedToast');
+      if (!el || typeof bootstrap === 'undefined') return;
+      var t = bootstrap.Toast.getOrCreateInstance(el, { delay: 4000 });
+      t.show();
+    });
     </script>
   @endif
 

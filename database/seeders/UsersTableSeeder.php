@@ -11,33 +11,30 @@ class UsersTableSeeder extends Seeder
 {
     public function run()
     {
-        // Cashier
-        User::create([
-            'name'     => 'Diana',
-            'email'    => 'cashier@az.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'cashier',
-        ]);
-        User::create([
-            'name'     => 'Grace',
-            'email'    => 'cashier1@az.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'cashier',
-        ]);
-        User::create([
-            'name'     => 'Belmonte',
-            'email'    => 'cashier2@az.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'cashier',
-        ]);
+        $pwd = Hash::make('password123');
+
+        // Cashier (updateOrCreate avoids duplicate-email errors when re-seeding)
+        User::updateOrCreate(
+            ['email' => 'cashier@az.com'],
+            ['name' => 'Diana', 'password' => $pwd, 'role' => 'cashier']
+        );
+        User::updateOrCreate(
+            ['email' => 'cashier1@az.com'],
+            ['name' => 'Grace', 'password' => $pwd, 'role' => 'cashier']
+        );
+        User::updateOrCreate(
+            ['email' => 'cashier2@az.com'],
+            ['name' => 'Belmonte', 'password' => $pwd, 'role' => 'cashier']
+        );
 
         // Admin
-        User::create([
-            'name'     => 'Admin User',
-            'email'    => 'admin@az.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'admin',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@az.com'],
+            ['name' => 'Admin User', 'password' => $pwd, 'role' => 'admin']
+        );
+        User::updateOrCreate(
+            ['email' => 'andrei@az.com'],
+            ['name' => 'Andrei', 'password' => $pwd, 'role' => 'admin']
+        );
     }
 }
-

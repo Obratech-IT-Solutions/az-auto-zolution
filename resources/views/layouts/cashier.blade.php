@@ -21,7 +21,22 @@
     .sidebar {
       width: 260px; height: 100vh; position: fixed;
       background: #1c1f26; box-shadow: 4px 0 10px rgba(0,0,0,0.2);
-      color: #fff; overflow-y: auto;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-links {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sidebar-footer {
+      flex-shrink: 0;
+      padding: 12px 16px 20px;
+      background: #1c1f26;
+      border-top: 1px solid rgba(255,255,255,0.08);
     }
     .sidebar .logo-container { text-align: center; padding: 25px 0 15px; }
     .sidebar .logo-container img {
@@ -37,10 +52,6 @@
     }
     .sidebar a i { margin-right:12px; font-size:18px; }
     .sidebar a:hover { background:#495057; color:#fff; }
-    .logout-btn {
-      position:absolute; bottom:20px; left:20px;
-      width:calc(100% - 40px);
-    }
     .content {
       margin-left:260px; padding:40px 30px;
       background:#f1f4f9; min-height:100vh;
@@ -53,12 +64,12 @@
       from { opacity:0; transform: translateY(10px); }
       to   { opacity:1; transform: translateY(0);  }
     }
-    /* Notification and Clock Row */
+    /* Notification and Clock Row — must sit above sticky page headers (e.g. Clients & Vehicles z-index 1020–1030) */
     .notif-row {
       position: absolute;
       top: 20px;
       right: 32px;
-      z-index: 999;
+      z-index: 1040;
       display: flex;
       align-items: center;
       gap: 20px;
@@ -94,16 +105,36 @@
       padding: 3px 6px;
       border-radius: 50%;
     }
+    .notif-bell-box {
+      position: relative;
+    }
+    /* Above sticky tables; below Bootstrap modals (1055) */
+    .notif-bell-box .dropdown-menu {
+      z-index: 1045;
+    }
     .dropdown-menu {
       min-width: 240px;
       max-width: 330px;
       font-size: 1rem;
     }
+    .low-stock-scroll {
+      max-height: min(320px, 50vh);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
     .low-stock-item-row {
-      padding: 4px 16px;
+      padding: 6px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
+    }
+    .low-stock-item-row .low-stock-label {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .dropdown-header {
       font-size: 1.05em;
@@ -114,6 +145,10 @@
     .dropdown-divider {
       margin: 0;
     }
+    .low-stock-clear-all {
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -121,26 +156,30 @@
   <div class="d-flex">
     <!-- Sidebar -->
     <div class="sidebar">
-      <div class="logo-container">
+      <div class="logo-container flex-shrink-0">
         <img src="{{ asset('images/logo.png') }}" alt="Logo">
         <h4 class="mt-2">AZ Auto Zolutions</h4>
       </div>
-      <a href="{{ route('cashier.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-      <a href="{{ route('cashier.appointment.index') }}"><i class="fas fa-calendar-check"></i> Appointments</a>
-      <a href="{{ route('cashier.quotation.index') }}"><i class="fas fa-file-alt"></i> Quotation</a>
-      <a href="{{ route('cashier.service-order') }}"><i class="fas fa-tools"></i> Service Orders</a>
-      <a href="{{ route('cashier.invoice.index') }}"><i class="fas fa-file-invoice"></i> Invoicing</a>
-      <a href="{{ route('cashier.inventory.index') }}"><i class="fas fa-boxes"></i> Inventory</a>
-      <a href="{{ route('cashier.expenses.index') }}"><i class="fas fa-wallet"></i> Expenses</a>
-      <a href="{{ route('cashier.ar-cashdeposit.index') }}"><i class="fas fa-hand-holding-usd"></i> A/R & Cash Deposit</a>
-      <a href="{{ route('cashier.vehicles.index') }}"><i class="fas fa-users"></i> Clients & Vehicles</a>
-      <a href="{{ route('cashier.history') }}"><i class="fas fa-history"></i> History</a>
-      <form method="POST" action="{{ route('logout') }}" class="logout-btn">
-        @csrf
-        <button type="submit" class="btn btn-danger w-100">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
-      </form>
+      <nav class="sidebar-links" aria-label="Main navigation">
+        <a href="{{ route('cashier.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="{{ route('cashier.appointment.index') }}"><i class="fas fa-calendar-check"></i> Appointments</a>
+        <a href="{{ route('cashier.quotation.index') }}"><i class="fas fa-file-alt"></i> Quotation</a>
+        <a href="{{ route('cashier.service-order') }}"><i class="fas fa-tools"></i> Service Orders</a>
+        <a href="{{ route('cashier.invoice.index') }}"><i class="fas fa-file-invoice"></i> Invoicing</a>
+        <a href="{{ route('cashier.inventory.index') }}"><i class="fas fa-boxes"></i> Inventory</a>
+        <a href="{{ route('cashier.expenses.index') }}"><i class="fas fa-wallet"></i> Expenses</a>
+        <a href="{{ route('cashier.ar-cashdeposit.index') }}"><i class="fas fa-hand-holding-usd"></i> A/R & Cash Deposit</a>
+        <a href="{{ route('cashier.vehicles.index') }}"><i class="fas fa-users"></i> Clients & Vehicles</a>
+        <a href="{{ route('cashier.history') }}"><i class="fas fa-history"></i> History</a>
+      </nav>
+      <div class="sidebar-footer">
+        <form method="POST" action="{{ route('logout') }}">
+          @csrf
+          <button type="submit" class="btn btn-danger w-100">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Main Content -->
@@ -153,27 +192,40 @@
         <div class="notif-bell-box">
           <div class="dropdown">
             <button class="btn position-relative" id="notifBell" data-bs-toggle="dropdown" aria-expanded="false"
-              style="color: {{ isset($lowStockItems) && $lowStockItems->count() ? '#c30000' : '#adb5bd' }};">
+              data-low-stock-total="{{ (int) ($lowStockCount ?? 0) }}"
+              data-low-stock-rendered="{{ isset($lowStockItems) ? $lowStockItems->count() : 0 }}"
+              style="color: {{ ($lowStockCount ?? 0) > 0 ? '#c30000' : '#adb5bd' }};">
               <i class="fas fa-bell"></i>
-              @if(isset($lowStockItems) && $lowStockItems->count())
-                <span class="badge bg-danger">
-                  {{ $lowStockItems->count() }}
-                </span>
+              @if(($lowStockCount ?? 0) > 0)
+                <span class="badge bg-danger">{{ $lowStockCount }}</span>
               @endif
             </button>
-            @if(isset($lowStockItems) && $lowStockItems->count())
-              <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notifBell">
-                <li class="dropdown-header">
-                  <i class="fas fa-exclamation-triangle me-2"></i>
-                  Low Inventory (≤ 5 units)
+            @if(($lowStockCount ?? 0) > 0)
+              <ul class="dropdown-menu dropdown-menu-end shadow p-0" style="min-width: 280px; max-width: 380px;" aria-labelledby="notifBell">
+                <li class="dropdown-header px-3 py-2 mb-0 rounded-top d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                  <span class="text-truncate" style="min-width: 0;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Low Inventory (≤ 5 units)
+                  </span>
+                  <button type="button" class="btn btn-link btn-sm text-danger p-0 low-stock-clear-all flex-shrink-0 text-decoration-none" title="Hide every alert in this list (browser only)">Clear all</button>
                 </li>
-                <li><hr class="dropdown-divider"></li>
-                @foreach($lowStockItems as $item)
-                  <li class="low-stock-item-row">
-                    <b>{{ $item->item_name }}</b>
-                    <span class="float-end badge bg-warning text-dark">{{ $item->quantity }}</span>
+                <li><hr class="dropdown-divider my-0"></li>
+                <li class="p-0">
+                  <ul class="list-unstyled mb-0 low-stock-scroll">
+                    @foreach($lowStockItems as $item)
+                      <li class="low-stock-item-row border-bottom" data-low-stock-id="{{ $item->id }}">
+                        <span class="low-stock-label" title="{{ $item->item_name }}"><b>{{ $item->item_name }}</b></span>
+                        <span class="badge bg-warning text-dark flex-shrink-0">{{ $item->quantity }}</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary low-stock-dismiss flex-shrink-0 py-0 px-2" title="Hide this alert" aria-label="Dismiss notification">&times;</button>
+                      </li>
+                    @endforeach
+                  </ul>
+                </li>
+                @if($lowStockCount > $lowStockItems->count())
+                  <li class="px-3 py-2 small text-muted border-top">
+                    Showing {{ $lowStockItems->count() }} of {{ $lowStockCount }}. Open Inventory to see or restock the rest.
                   </li>
-                @endforeach
+                @endif
               </ul>
             @endif
           </div>
@@ -200,6 +252,80 @@
     }
     setInterval(updateHeaderClock, 1000);
     window.onload = updateHeaderClock;
+  </script>
+  <script>
+    (function () {
+      var KEY = 'az_cashier_lowstock_dismissed_v1';
+      var MAX_IDS = 800;
+      function parseDismissed() {
+        try {
+          var a = JSON.parse(localStorage.getItem(KEY) || '[]');
+          return Array.isArray(a) ? a.map(Number).filter(Boolean) : [];
+        } catch (e) { return []; }
+      }
+      function saveDismissed(ids) {
+        var uniq = [];
+        var seen = {};
+        ids.forEach(function (id) {
+          if (!seen[id]) { seen[id] = true; uniq.push(id); }
+        });
+        if (uniq.length > MAX_IDS) uniq = uniq.slice(-MAX_IDS);
+        localStorage.setItem(KEY, JSON.stringify(uniq));
+      }
+      function updateLowStockBadge() {
+        var btn = document.getElementById('notifBell');
+        if (!btn) return;
+        var total = parseInt(btn.getAttribute('data-low-stock-total') || '0', 10);
+        var rendered = parseInt(btn.getAttribute('data-low-stock-rendered') || '0', 10);
+        var visible = document.querySelectorAll('.low-stock-item-row[data-low-stock-id]:not(.d-none)').length;
+        var n = visible + Math.max(0, total - rendered);
+        var badge = btn.querySelector('.badge');
+        if (badge) {
+          badge.textContent = n;
+          badge.classList.toggle('d-none', n <= 0);
+        }
+        btn.style.color = n > 0 ? '#c30000' : '#adb5bd';
+      }
+      function applyDismissed() {
+        var dismissed = new Set(parseDismissed());
+        document.querySelectorAll('.low-stock-item-row[data-low-stock-id]').forEach(function (el) {
+          var id = parseInt(el.getAttribute('data-low-stock-id'), 10);
+          if (dismissed.has(id)) el.classList.add('d-none');
+        });
+        updateLowStockBadge();
+      }
+      document.querySelectorAll('.low-stock-dismiss').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var row = btn.closest('.low-stock-item-row');
+          if (!row) return;
+          var id = parseInt(row.getAttribute('data-low-stock-id'), 10);
+          if (!id) return;
+          var arr = parseDismissed();
+          if (arr.indexOf(id) === -1) arr.push(id);
+          saveDismissed(arr);
+          row.classList.add('d-none');
+          updateLowStockBadge();
+        });
+      });
+      var clearAllBtn = document.querySelector('.low-stock-clear-all');
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var arr = parseDismissed();
+          document.querySelectorAll('.low-stock-item-row[data-low-stock-id]').forEach(function (el) {
+            var id = parseInt(el.getAttribute('data-low-stock-id'), 10);
+            if (id && arr.indexOf(id) === -1) arr.push(id);
+            el.classList.add('d-none');
+          });
+          saveDismissed(arr);
+          updateLowStockBadge();
+        });
+      }
+      applyDismissed();
+    })();
   </script>
 </body>
 </html>

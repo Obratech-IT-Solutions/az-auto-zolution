@@ -21,6 +21,11 @@ class Invoice extends Model
         'total_discount',
         'vat_amount',
         'grand_total',
+        'payment_cash_amount',
+        'payment_non_cash_amount',
+        'cash_tender_amount',
+        'cash_change_amount',
+        'cashless_tender_amount',
         'payment_type',
         'invoice_no',
         'number',
@@ -39,7 +44,12 @@ class Invoice extends Model
         'subtotal'         => 'decimal:2',
         'total_discount'   => 'decimal:2',
         'vat_amount'       => 'decimal:2',
-        'grand_total'      => 'decimal:2',
+        'grand_total'              => 'decimal:2',
+        'payment_cash_amount'      => 'decimal:2',
+        'payment_non_cash_amount'  => 'decimal:2',
+        'cash_tender_amount'       => 'decimal:2',
+        'cash_change_amount'       => 'decimal:2',
+        'cashless_tender_amount'   => 'decimal:2',
         'number'       => 'string',
         'address'      => 'string',
 
@@ -74,13 +84,95 @@ class Invoice extends Model
     }
 
     /**
+     * Printable / UI customer name: real client name, snapshot, or smart fallback (never raw "0").
+     */
+    public function resolvedCustomerName(): string
+    {
+        $c = $this->client;
+
+        if ($c) {
+            $raw = trim((string) $c->name);
+            if ($raw !== '' && ! Client::isPlaceholderLabel($raw)) {
+                return $raw;
+            }
+        }
+
+        $snap = trim((string) ($this->customer_name ?? ''));
+        if ($snap !== '' && ! Client::isPlaceholderLabel($snap)) {
+            return $snap;
+        }
+
+        if ($c) {
+            $v = $this->vehicle;
+            if (! $v && $this->vehicle_id) {
+                $v = $this->vehicle()->first();
+            }
+            $plate = $v ? trim((string) ($v->plate_number ?? '')) : '';
+            if ($plate === '' || Client::isPlaceholderLabel($plate)) {
+                $plate = trim((string) (Vehicle::query()
+                    ->where('client_id', $c->id)
+                    ->whereNotNull('plate_number')
+                    ->where('plate_number', '!=', '')
+                    ->orderBy('id')
+                    ->value('plate_number') ?? ''));
+            }
+
+            $latestName = trim((string) (static::query()
+                ->where('client_id', $c->id)
+                ->whereNotNull('customer_name')
+                ->where('customer_name', '!=', '')
+                ->orderByDesc('created_at')
+                ->value('customer_name') ?? ''));
+
+            return $c->select2Label(
+                $latestName !== '' ? $latestName : null,
+                $plate !== '' ? $plate : null
+            );
+        }
+
+        return $snap !== '' ? $snap : '—';
+    }
+
+    public function resolvedCustomerPhone(): ?string
+    {
+        $n = trim((string) ($this->number ?? ''));
+        if ($n !== '' && ! Client::isPlaceholderLabel($n)) {
+            return $n;
+        }
+        $c = $this->client;
+        if ($c) {
+            $p = trim((string) ($c->phone ?? ''));
+            if ($p !== '' && ! Client::isPlaceholderLabel($p)) {
+                return $p;
+            }
+        }
+
+        return null;
+    }
+
+    public function resolvedCustomerAddress(): ?string
+    {
+        $a = trim((string) ($this->address ?? ''));
+        if ($a !== '') {
+            return $a;
+        }
+        $c = $this->client;
+        if ($c) {
+            $a2 = trim((string) ($c->address ?? ''));
+            if ($a2 !== '') {
+                return $a2;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Display fallbacks (use in views as $invoice->customer_display / $invoice->vehicle_display)
      */
     public function getCustomerDisplayAttribute(): string
     {
-        return $this->client
-            ? $this->client->name
-            : ($this->customer_name ?? '');
+        return $this->resolvedCustomerName();
     }
 
     public function getVehicleDisplayAttribute(): string

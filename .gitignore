@@ -1,4 +1,5 @@
 /.phpunit.cache
+.env
 /node_modules
 /public/build
 /public/hot
@@ -20,3 +21,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Local IDE / tooling
+.cursor/

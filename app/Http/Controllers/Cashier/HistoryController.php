@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Cashier;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Invoice;
+use App\Support\CashierListLimits;
 
 class HistoryController extends Controller
 {
     public function index(Request $request)
     {
         $query = Invoice::with(['client', 'vehicle'])
-            ->orderBy('created_at', 'desc');
+            ->orderByDesc('created_at');
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -25,7 +26,7 @@ class HistoryController extends Controller
             });
         }
 
-        $history = $query->get();
+        $history = $query->paginate(CashierListLimits::HISTORY_INDEX_PER_PAGE)->withQueryString();
 
         return view('cashier.history', compact('history'));
     }

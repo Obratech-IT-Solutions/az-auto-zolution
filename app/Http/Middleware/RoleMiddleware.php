@@ -18,8 +18,24 @@ class RoleMiddleware
      */
     public function handle(Request $request, Closure $next, string $role): Response
     {
-        if (! $request->user() || $request->user()->role !== $role) {
-            abort(403, 'Unauthorized.');
+        $user = $request->user();
+        $userRole = $user ? (($user->role ?? '') === '' ? null : $user->role) : null;
+
+        if (! $user || $userRole !== $role) {
+            if ($request->expectsJson()) {
+                abort(403, 'Unauthorized.');
+            }
+
+            if (! $user) {
+                return redirect()->guest(route('login'));
+            }
+
+            $home = ($userRole === 'admin') ? 'admin.home' : 'cashier.home';
+
+            return redirect()->route($home)->with(
+                'error',
+                __('You do not have access to that page.')
+            );
         }
 
         return $next($request);

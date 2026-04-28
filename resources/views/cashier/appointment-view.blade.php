@@ -143,7 +143,7 @@
     {{-- DETAILS GRID --}}
     <div class="details-section">
       <table class="details-table">
-        <tr><td class="label">Name</td><td>{{ $invoice->client->name ?? $invoice->customer_name }}</td></tr>
+        <tr><td class="label">Name</td><td>{{ $invoice->resolvedCustomerName() }}</td></tr>
         <tr><td class="label">Plate No</td><td>{{ $invoice->vehicle->plate_number ?? $invoice->vehicle_name ?? 'N/A' }}</td></tr>
         <tr><td class="label">Manufacturer</td><td>{{ $invoice->vehicle->manufacturer ?? 'N/A' }}</td></tr>
         <tr><td class="label">Model</td><td>{{ $invoice->vehicle->model ?? 'N/A' }}</td></tr>
@@ -161,13 +161,13 @@
         <tr>
   <td>Address</td>
   <td style="white-space:pre-line">
-    {{ $invoice->address ?? $invoice->client->address ?? '' }}
+    {{ $invoice->resolvedCustomerAddress() ?? '' }}
   </td>
 </tr>
 <tr>
   <td>Contact No.</td>
   <td>
-    {{ $invoice->number  ?? $invoice->client->phone   ?? '' }}
+    {{ $invoice->resolvedCustomerPhone() ?? '' }}
   </td>
 </tr>
       </table>
@@ -239,7 +239,7 @@
 
     {{-- Client’s name centered --}}
     <div class="text-center mt-4">
-      <strong>{{ strtoupper($invoice->client->name ?? $invoice->customer_name) }}</strong>
+      <strong>{{ strtoupper($invoice->resolvedCustomerName()) }}</strong>
     </div>
     <div class="signature">CUSTOMER NAME & SIGNATURE</div>
   </div>

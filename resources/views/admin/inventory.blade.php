@@ -56,8 +56,8 @@
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <span>Inventory List</span>
       <div class="d-flex">
-      <input id="searchInput" type="text" class="form-control form-control-sm me-2" placeholder="Search inventory...">
-
+      <input id="searchInput" type="search" class="form-control form-control-sm me-2" placeholder="Search name, part #, supplier…"
+        value="{{ request('q', '') }}" autocomplete="off" style="min-width: 220px;">
       </div>
     </div>
     <div class="card-body p-0">
@@ -75,11 +75,11 @@
         </tr>
       </thead>
       <tbody>
-        @foreach($inventories as $inv)
+        @forelse($inventories as $inv)
       <tr data-id="{{ $inv->id }}"
       class="{{ $inv->quantity == 0 ? 'table-danger' : ($inv->quantity < 3 ? 'table-warning' : '') }}">
 
-      <td>{{ $loop->iteration }}</td>
+      <td>{{ ($inventories->currentPage() - 1) * $inventories->perPage() + $loop->iteration }}</td>
       <td>{{ $inv->item_name }}</td>
       <td>{{ $inv->part_number }}</td>
       <td>{{ $inv->quantity }}</td>
@@ -104,15 +104,26 @@
       </td>
 
       </tr>
-      @endforeach
-        @if($inventories->isEmpty())
+      @empty
       <tr>
-      <td colspan="8" class="text-center text-muted py-3">No inventory items yet.</td>
+      <td colspan="8" class="text-center text-muted py-3">
+        @if(request()->filled('q'))
+          No items match your search.
+        @else
+          No inventory items yet.
+        @endif
+      </td>
       </tr>
-      @endif
+      @endforelse
       </tbody>
       </table>
     </div>
+    @if($inventories->total() > 0)
+    <div class="card-footer py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <small class="text-muted">{{ $inventories->total() }} item(s) total</small>
+      {{ $inventories->onEachSide(1)->links() }}
+    </div>
+    @endif
     </div>
   </div>
 
@@ -120,11 +131,6 @@
   <script>
     const token = document.querySelector('meta[name="csrf-token"]').content;
     let editingId = null;
-
-    // Helper: remove all non-alphanumeric, lowercase
-    function normalize(str) {
-    return str.replace(/[^a-z0-9]/gi, '').toLowerCase();
-    }
 
     // Inventory form handler (add/update)
     document.getElementById('inventoryForm').addEventListener('submit', async e => {
@@ -198,16 +204,21 @@
     document.getElementById('cancelEditBtn').classList.add('d-none');
     });
 
-    // Search handler
-    // Live search as you type
-    document.getElementById('searchInput').addEventListener('input', () => {
-    const raw = document.getElementById('searchInput').value;
-    const q = normalize(raw);
-    document.querySelectorAll('#inventoryTable tbody tr').forEach(row => {
-      const text = normalize(row.textContent);
-      row.style.display = text.includes(q) ? '' : 'none';
-    });
-    });
+    (function () {
+      const el = document.getElementById('searchInput');
+      if (!el) return;
+      let t;
+      el.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          const url = new URL(window.location.href);
+          const v = el.value.trim();
+          if (v) url.searchParams.set('q', v); else url.searchParams.delete('q');
+          url.searchParams.delete('page');
+          window.location.assign(url.toString());
+        }, 400);
+      });
+    })();
 
   </script>
 @endsection

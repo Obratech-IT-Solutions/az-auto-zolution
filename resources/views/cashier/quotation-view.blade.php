@@ -306,7 +306,7 @@
       <table class="details-table">
       <tr>
         <td class="label">Name</td>
-        <td>{{ $invoice->client->name ?? $invoice->customer_name }}</td>
+        <td>{{ $invoice->resolvedCustomerName() }}</td>
       </tr>
       <tr>
         <td class="label">Plate No</td>
@@ -330,7 +330,7 @@
       </tr>
       <tr>
         <td class="label">Odometer</td>
-        <td style="color:#E40000">{{ $invoice->vehicle->odometer ?? '0' }}</td>
+        <td style="color:#E40000">@if($invoice->vehicle && trim((string) ($invoice->vehicle->odometer ?? '')) !== ''){{ $invoice->vehicle->odometer }}@else N/A @endif</td>
       </tr>
       </table>
       <table class="right-details-table">
@@ -349,13 +349,13 @@
       <tr>
         <td>Address</td>
         <td style="white-space:pre-line">
-        {{ $invoice->address ?? $invoice->client->address ?? '' }}
+        {{ $invoice->resolvedCustomerAddress() ?? '' }}
         </td>
       </tr>
       <tr>
         <td>Contact No.</td>
         <td>
-        {{ $invoice->number ?? $invoice->client->phone ?? '' }}
+        {{ $invoice->resolvedCustomerPhone() ?? '' }}
         </td>
       </tr>
       </table>
@@ -466,7 +466,7 @@
 
     {{-- Client’s name centered --}}
     <div class="text-center mt-4">
-      <strong>{{ strtoupper($invoice->client->name ?? $invoice->customer_name) }}</strong>
+      <strong>{{ strtoupper($invoice->resolvedCustomerName()) }}</strong>
     </div>
     <div class="signature">CUSTOMER NAME & SIGNATURE</div>
     </div>

@@ -5,6 +5,7 @@
 
 @section('content')
   <meta name="csrf-token" content="{{ csrf_token() }}">
+@include('cashier.partials.cashier-flash-toast')
   <style>
     .table td,
     .table th {
@@ -15,15 +16,15 @@
     .table td {
     text-align: center;
     }
+
+    #deleteInventoryModal .modal-dialog {
+    margin: auto;
+    }
   </style>
 
   <div class="container mt-4">
     <h2 class="mb-4">Inventory Management</h2>
 
-    {{-- Success Toast --}}
-    <div id="inventory-success" class="alert alert-success d-none"></div>
-
-    {{-- ➤ Add/Update Inventory --}}
     <div class="card mb-5">
     <div class="card-header bg-success text-white" id="form-header">
       Add New Inventory Item
@@ -68,7 +69,8 @@
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <span>Inventory List</span>
       <div class="d-flex">
-      <input id="searchInput" type="text" class="form-control form-control-sm" placeholder="Search inventory...">
+      <input id="searchInput" type="search" class="form-control form-control-sm" placeholder="Search name, part #, supplier…"
+        value="{{ request('q', '') }}" autocomplete="off" style="min-width: 220px;">
       </div>
 
     </div>
@@ -91,12 +93,12 @@
         </thead>
 
         <tbody>
-          @foreach($inventories as $inv)
+          @forelse($inventories as $inv)
         <tr data-id="{{ $inv->id }}"
         class="{{ $inv->quantity == 0 ? 'table-danger' : ($inv->quantity < 3 ? 'table-warning' : 'table-light') }}">
 
 
-        <td>{{ $loop->iteration }}</td>
+        <td>{{ ($inventories->currentPage() - 1) * $inventories->perPage() + $loop->iteration }}</td>
         <td>{{ $inv->item_name }}</td>
         <td>{{ $inv->part_number }}</td>
         <td class="text-end">{{ $inv->quantity }}</td>
@@ -113,30 +115,56 @@
         title="Edit">
         <i class="bi bi-pencil-square"></i>
         </button>
-        <form class="d-inline" action="{{ route('cashier.inventory.destroy', $inv) }}" method="POST"
-        onsubmit="return confirm('Delete this item?')">
-        @csrf @method('DELETE')
-        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+        <button type="button"
+          class="btn btn-sm btn-outline-danger inventory-delete-trigger"
+          title="Delete"
+          data-delete-url="{{ route('cashier.inventory.destroy', $inv) }}">
           <i class="bi bi-trash"></i>
         </button>
-        </form>
         </td>
 
         </tr>
-      @endforeach
-
-          @if($inventories->isEmpty())
+      @empty
         <tr>
         <td colspan="8" class="text-center text-muted py-3">
-        No inventory items yet.
+        @if(request()->filled('q'))
+          No items match your search.
+        @else
+          No inventory items yet.
+        @endif
         </td>
         </tr>
-      @endif
+      @endforelse
         </tbody>
         </table>
       </small>
       </div>
     </div>
+    @if($inventories->total() > 0)
+    <div class="card-footer py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <small class="text-muted">{{ $inventories->total() }} item(s) total</small>
+      {{ $inventories->onEachSide(1)->links() }}
+    </div>
+    @endif
+    </div>
+  </div>
+
+  <div class="modal fade" id="deleteInventoryModal" tabindex="-1" aria-labelledby="deleteInventoryModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content border-0 shadow-lg overflow-hidden">
+        <div class="modal-header bg-danger text-white border-0 py-3 position-relative">
+          <h5 class="modal-title w-100 text-center fs-6 mb-0 pe-4" id="deleteInventoryModalLabel">Confirm delete</h5>
+          <button type="button" class="btn-close btn-close-white position-absolute top-50 end-0 translate-middle-y me-2" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body px-3 py-4 text-center">
+          <p class="small text-muted mb-0">Remove this inventory item? This cannot be undone.</p>
+        </div>
+        <div class="modal-footer border-0 justify-content-center gap-2 pb-4 pt-0 flex-nowrap">
+          <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger btn-sm px-3" id="confirmInventoryDeleteBtn">Delete</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -193,6 +221,23 @@
   <script>
     const token = document.querySelector('meta[name="csrf-token"]').content;
     let editingId = null;
+    let pendingDeleteUrl = null;
+
+    function showInvToastGreen(text) {
+      if (typeof showCashierFlashToast === 'function') {
+        showCashierFlashToast(text, { variant: 'success', reloadAfter: true });
+      } else {
+        window.location.reload();
+      }
+    }
+
+    function showInvToastDeletedThenReload() {
+      if (typeof showCashierFlashToast === 'function') {
+        showCashierFlashToast('Deleted.', { variant: 'danger', reloadAfter: true });
+      } else {
+        window.location.reload();
+      }
+    }
 
     // --- ADD/UPDATE Inventory (AJAX) ---
     document.getElementById('inventoryForm').addEventListener('submit', async e => {
@@ -216,13 +261,8 @@
       });
 
       if (res.ok) {
-      const inv = await res.json();
-      const alert = document.getElementById('inventory-success');
-      alert.textContent = '✔ Inventory item added!';
-      alert.classList.remove('d-none');
-      setTimeout(() => alert.classList.add('d-none'), 2500);
-
-      window.location.reload();
+      await res.json();
+      showInvToastGreen('Added');
       form.reset();
       } else if (res.status === 422) {
       const errs = (await res.json()).errors;
@@ -263,13 +303,21 @@
 
 
 
-    // In-page search
-    document.getElementById('searchInput').addEventListener('keyup', () => {
-    const q = document.getElementById('searchInput').value.toLowerCase().trim();
-    document.querySelectorAll('#inventoryTable tbody tr').forEach(row => {
-      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-    });
+    (function () {
+      const el = document.getElementById('searchInput');
+      if (!el) return;
+      let t;
+      el.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          const url = new URL(window.location.href);
+          const v = el.value.trim();
+          if (v) url.searchParams.set('q', v); else url.searchParams.delete('q');
+          url.searchParams.delete('page');
+          window.location.assign(url.toString());
+        }, 400);
+      });
+    })();
 
 
     document.getElementById('saveEditBtn').addEventListener('click', async () => {
@@ -286,25 +334,71 @@
     try {
       const res = await fetch(`/cashier/inventory/${id}`, {
       method: 'PUT',
+      credentials: 'same-origin',
       headers: {
         'X-CSRF-TOKEN': token,
+        'X-Requested-With': 'XMLHttpRequest',
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({ ...data, _token: token })
       });
       if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('editInventoryModal')).hide();
-      alert('✔ Inventory updated!');
-      window.location.reload();
+      var em = bootstrap.Modal.getInstance(document.getElementById('editInventoryModal'));
+      if (em) em.hide();
+      showInvToastGreen('Updated');
       } else if (res.status === 422) {
       alert('Validation failed. Check fields.');
+      } else if (res.status === 419) {
+      alert('Session expired. Please refresh the page and try again.');
+      } else if (res.status === 403) {
+      alert('You do not have permission to update this item.');
       } else {
       alert('Server error.');
       }
     } catch {
       alert('Network error.');
     }
+    });
+
+    document.querySelectorAll('.inventory-delete-trigger').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        pendingDeleteUrl = btn.getAttribute('data-delete-url');
+        new bootstrap.Modal(document.getElementById('deleteInventoryModal')).show();
+      });
+    });
+
+    document.getElementById('confirmInventoryDeleteBtn').addEventListener('click', async function () {
+      var url = pendingDeleteUrl;
+      var modalEl = document.getElementById('deleteInventoryModal');
+      var inst = bootstrap.Modal.getInstance(modalEl);
+      if (inst) {
+        inst.hide();
+      }
+      pendingDeleteUrl = null;
+      if (!url) {
+        return;
+      }
+      try {
+        var res = await fetch(url, {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ _token: token }),
+        });
+        if (res.ok) {
+          showInvToastDeletedThenReload();
+        } else {
+          alert('Could not delete this item.');
+        }
+      } catch (_e) {
+        alert('Network error.');
+      }
     });
 
   </script>

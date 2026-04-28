@@ -93,9 +93,68 @@
             background-color: #357ab8 !important;
             cursor: pointer;
         }
+
+        .dashboard-overview-head {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .dashboard-filter-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: flex-end;
+            max-width: 100%;
+        }
+
+        .dashboard-filter-form .form-label {
+            font-size: 0.75rem;
+            margin-bottom: 0.15rem;
+            color: #555;
+        }
+
+        .dashboard-range-hint {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin: 0 0 4px 0;
+        }
     </style>
 
-    <h2>Dashboard Overview</h2>
+    <div class="dashboard-overview-head">
+        <div>
+            <h2 class="mb-1">Dashboard Overview</h2>
+            <p class="dashboard-range-hint">
+                @if(($period ?? 'all') === 'all')
+                    Counts show <strong>all time</strong>.
+                @else
+                    <strong>{{ $rangeLabel ?? '' }}</strong> —
+                    Quotation, invoicing, history, inventory &amp; service orders use <strong>created date</strong> in range. Appointment count &amp; calendar use <strong>appointment date</strong> in range.
+                @endif
+            </p>
+        </div>
+        <form method="get" action="{{ route('cashier.dashboard') }}" class="dashboard-filter-form" aria-label="Dashboard date filter">
+            <div>
+                <label for="dash_period" class="form-label fw-semibold">Period</label>
+                <select id="dash_period" name="period" class="form-select form-select-sm">
+                    <option value="all" @selected(($period ?? 'all') === 'all')>All time</option>
+                    <option value="day" @selected(($period ?? '') === 'day')>Day</option>
+                    <option value="week" @selected(($period ?? '') === 'week')>Week</option>
+                    <option value="month" @selected(($period ?? '') === 'month')>Month</option>
+                    <option value="year" @selected(($period ?? '') === 'year')>Year</option>
+                </select>
+            </div>
+            <div>
+                <label for="dash_ref" class="form-label fw-semibold">Reference date</label>
+                <input type="date" id="dash_ref" name="ref" value="{{ old('ref', $refDateInput ?? \Carbon\Carbon::today()->format('Y-m-d')) }}"
+                    class="form-control form-control-sm" style="min-width:11rem;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        </form>
+    </div>
     <div class="dashboard-cards">
 
         <div class="card-dashboard quotation">

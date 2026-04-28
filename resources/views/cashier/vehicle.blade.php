@@ -2,6 +2,7 @@
 @extends('layouts.cashier')
 
 @section('content')
+@include('cashier.partials.cashier-flash-toast')
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
@@ -97,7 +98,7 @@
         <div class="col-md-2">
         <select name="client_id" class="form-select shadow-sm rounded">
           <option value="">Select Client</option>
-          @foreach($clients as $c)
+          @foreach($clientsForSelect as $c)
         <option value="{{ $c->id }}">{{ $c->name }}</option>
       @endforeach
         </select>
@@ -138,7 +139,8 @@
       style="top: 0; z-index: 1020;">
       <span>Clients List</span>
       <input id="clientSearch" type="text" class="form-control form-control-sm shadow-sm rounded"
-      placeholder="🔍 Search client..." style="width: 220px;">
+      placeholder="🔍 Search client..." style="width: 220px;" value="{{ request('client_q', '') }}"
+      autocomplete="off">
     </div>
     <div class="scrollable-tables card-body p-0">
       <table id="clientsTable" class="table mb-0 table-hover">
@@ -172,6 +174,10 @@
       </tbody>
       </table>
     </div>
+    <div class="card-footer py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <small class="text-muted">{{ $clients->total() }} client(s) total</small>
+      {{ $clients->onEachSide(1)->links() }}
+    </div>
     </div>
 
 
@@ -182,7 +188,7 @@
       style="top: 0; z-index: 1020;">
       <span>Vehicles List</span>
       <input id="vehicleSearch" type="text" class="form-control form-control-sm" placeholder="Search vehicle..."
-      style="width: 200px;">
+      style="width: 200px;" value="{{ request('vehicle_q', '') }}" autocomplete="off">
     </div>
     <div class="scrollable-tables card-body p-0">
       <table id="vehiclesTable" class="table mb-0 table-hover">
@@ -226,6 +232,10 @@
       @endforeach
       </tbody>
       </table>
+    </div>
+    <div class="card-footer py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <small class="text-muted">{{ $vehicles->total() }} vehicle(s) total</small>
+      {{ $vehicles->onEachSide(1)->links() }}
     </div>
     </div>
 
@@ -283,7 +293,7 @@
         <input type="hidden" name="id">
         <select name="client_id" class="form-select shadow-sm rounded">
         <option value="">Select Client</option>
-        @foreach($clients as $c)
+        @foreach($clientsForSelect as $c)
       <option value="{{ $c->id }}">{{ $c->name }}</option>
       @endforeach
         </select>
@@ -302,14 +312,46 @@
     </div>
     </div>
 
+    <!-- Delete confirmation (replaces window.confirm) -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalTitle"
+      aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-danger overflow-hidden shadow">
+      <div class="modal-header bg-danger text-white border-0 rounded-0">
+        <h5 class="modal-title d-flex align-items-center gap-2" id="deleteConfirmModalTitle">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span id="deleteConfirmTitleLabel">Confirm delete</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+        aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteConfirmMessage" class="mb-0 text-body"></p>
+      </div>
+      <div class="modal-footer bg-light border-top">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="deleteConfirmProceed">
+        <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </div>
+      </div>
+    </div>
+    </div>
+
   </div>
   </div>
   </div>
 
   <script>
     const token = document.querySelector('meta[name="csrf-token"]').content;
+    const deleteConfirmModalEl = document.getElementById('deleteConfirmModal');
+    function getDeleteConfirmModal() {
+      if (!deleteConfirmModalEl || typeof window.bootstrap === 'undefined') return null;
+      return bootstrap.Modal.getOrCreateInstance(deleteConfirmModalEl);
+    }
+    let pendingDelete = null;
 
-    async function ajaxForm(formId, tableId, successAlertId, rowBuilder) {
+    async function ajaxForm(formId, tableId, successAlertId, rowBuilder, afterRowCreate) {
     const form = document.getElementById(formId);
     form.addEventListener('submit', async e => {
       e.preventDefault();
@@ -330,6 +372,9 @@
         const tbody = document.querySelector(`#${tableId} tbody`);
         const tr = document.createElement('tr');
         tr.innerHTML = rowBuilder(obj);
+        if (typeof afterRowCreate === 'function') {
+          afterRowCreate(tr, obj);
+        }
         tbody.prepend(tr);
         const alert = document.getElementById(successAlertId);
         alert.classList.remove('d-none');
@@ -368,11 +413,24 @@
       opt.textContent = client.name;
       vehicleSelect.appendChild(opt);
       }
+      const esc = (s) => String(s ?? '').replace(/"/g, '&quot;');
       return `
       <td>${client.name}</td>
       <td>${client.address || ''}</td>
       <td>${client.phone || ''}</td>
-      <td>${client.email || ''}</td>`;
+      <td>${client.email || ''}</td>
+      <td>
+        <button type="button" class="btn btn-sm btn-warning edit-client" data-id="${client.id}" data-name="${esc(client.name)}" data-address="${esc(client.address)}" data-phone="${esc(client.phone)}" data-email="${esc(client.email)}">
+        <i class="bi bi-pencil-square"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-danger delete-client" data-id="${client.id}">
+        <i class="bi bi-trash"></i>
+        </button>
+      </td>`;
+    },
+    (tr, client) => {
+      tr.classList.add('client-row');
+      tr.dataset.id = String(client.id);
     }
     );
 
@@ -380,36 +438,68 @@
     'vehicleForm',
     'vehiclesTable',
     'vehicle-success',
-    v => `
-      <td>${v.client ? v.client.name : '-'}</td>
+    v => {
+      const cn = v.client ? v.client.name : '-';
+      const esc = (s) => String(s ?? '').replace(/"/g, '&quot;');
+      return `
+      <td>${cn}</td>
       <td>${v.plate_number}</td>
       <td>${v.model || ''}</td>
       <td>${v.vin_chasis || ''}</td>
       <td>${v.manufacturer || '-'}</td>
       <td>${v.year || '-'}</td>
       <td>${v.color || '-'}</td>
-      <td>${v.odometer || ''}</td>`
+      <td>${v.odometer || ''}</td>
+      <td>
+        <button type="button" class="btn btn-sm btn-warning edit-vehicle" data-id="${v.id}"
+        data-client_id="${v.client_id ?? ''}" data-plate_number="${esc(v.plate_number)}"
+        data-model="${esc(v.model)}" data-vin_chasis="${esc(v.vin_chasis)}"
+        data-manufacturer="${esc(v.manufacturer)}" data-year="${esc(v.year)}" data-color="${esc(v.color)}"
+        data-odometer="${esc(v.odometer)}">
+        <i class="bi bi-pencil-square"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-danger delete-vehicle" data-id="${v.id}">
+        <i class="bi bi-trash"></i>
+        </button>
+      </td>`;
+    }
     );
 
-    document.getElementById('clientSearch').addEventListener('input', function () {
-    let value = this.value.toLowerCase();
-    document.querySelectorAll('#clientsTable tbody tr').forEach(tr => {
-      tr.style.display = [...tr.children].some(td => td.textContent.toLowerCase().includes(value)) ? '' : 'none';
-    });
-    });
+    (function debounceServerSearch(inputId, param, pageParam) {
+      const el = document.getElementById(inputId);
+      if (!el) return;
+      let timer;
+      el.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set(param, el.value);
+          url.searchParams.delete(pageParam);
+          window.location.assign(url.toString());
+        }, 400);
+      });
+    })('clientSearch', 'client_q', 'clients_page');
 
-    document.getElementById('vehicleSearch').addEventListener('input', function () {
-    let value = this.value.toLowerCase();
-    document.querySelectorAll('#vehiclesTable tbody tr').forEach(tr => {
-      tr.style.display = [...tr.children].some(td => td.textContent.toLowerCase().includes(value)) ? '' : 'none';
-    });
-    });
+    (function debounceServerSearch(inputId, param, pageParam) {
+      const el = document.getElementById(inputId);
+      if (!el) return;
+      let timer;
+      el.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set(param, el.value);
+          url.searchParams.delete(pageParam);
+          window.location.assign(url.toString());
+        }, 400);
+      });
+    })('vehicleSearch', 'vehicle_q', 'vehicles_page');
 
-    // Show client info on row click
-    document.querySelectorAll('.client-row').forEach(row => {
-    row.addEventListener('click', async () => {
+    // Show client info on row click (delegation: works for AJAX-added rows)
+    document.querySelector('#clientsTable tbody').addEventListener('click', async (ev) => {
+      const row = ev.target.closest('tr.client-row');
+      if (!row || ev.target.closest('button')) return;
       const clientId = row.dataset.id;
-
       try {
       let res = await fetch(`/cashier/clients/${clientId}/vehicles`, {
         headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
@@ -417,7 +507,6 @@
 
       if (res.ok) {
         let data = await res.json();
-        // Update modal content
         document.getElementById('clientInfo').innerHTML = `
       <div><strong>Name:</strong> ${data.client.name}</div>
       <div><strong>Address:</strong> ${data.client.address || '-'}</div>
@@ -442,51 +531,71 @@
       alert('Network error.');
       }
     });
-    });
 
-
-    // ✅ Delete Client
-    document.querySelectorAll('.delete-client').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    document.querySelector('#clientsTable tbody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.delete-client');
+      if (!btn) return;
       e.stopPropagation();
-      if (confirm('Are you sure you want to delete this client?')) {
-      let res = await fetch(`/cashier/clients/${btn.dataset.id}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+      const modal = getDeleteConfirmModal();
+      if (!modal) return;
+      pendingDelete = { type: 'client', btn };
+      document.getElementById('deleteConfirmTitleLabel').textContent = 'Delete client?';
+      document.getElementById('deleteConfirmMessage').textContent =
+        'This will permanently remove this client from the list. This cannot be undone.';
+      modal.show();
+    });
+
+    document.querySelector('#vehiclesTable tbody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.delete-vehicle');
+      if (!btn) return;
+      e.stopPropagation();
+      const modal = getDeleteConfirmModal();
+      if (!modal) return;
+      pendingDelete = { type: 'vehicle', btn };
+      document.getElementById('deleteConfirmTitleLabel').textContent = 'Delete vehicle?';
+      document.getElementById('deleteConfirmMessage').textContent =
+        'This will permanently remove this vehicle from the list. This cannot be undone.';
+      modal.show();
+    });
+
+    document.getElementById('deleteConfirmProceed').addEventListener('click', async function () {
+      if (!pendingDelete) return;
+      const { type, btn } = pendingDelete;
+      pendingDelete = null;
+      const dm = getDeleteConfirmModal();
+      if (dm) dm.hide();
+      const url = type === 'client'
+        ? `/cashier/clients/${btn.dataset.id}`
+        : `/cashier/vehicles/${btn.dataset.id}`;
+      try {
+        const res = await fetch(url, {
+          method: 'DELETE',
+          headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          if (typeof showCashierFlashToast === 'function') {
+            showCashierFlashToast(type === 'client' ? 'Client deleted.' : 'Vehicle deleted.', { variant: 'danger', reloadAfter: true });
+          } else {
+          btn.closest('tr').remove();
+          }
+        } else {
+          alert(type === 'client' ? 'Failed to delete client.' : 'Failed to delete vehicle.');
+        }
+      } catch {
+        alert('Network error.');
+      }
+    });
+
+    if (deleteConfirmModalEl) {
+      deleteConfirmModalEl.addEventListener('hidden.bs.modal', function () {
+        pendingDelete = null;
       });
+    }
 
-      if (res.ok) {
-        btn.closest('tr').remove();
-      } else {
-        alert('Failed to delete client.');
-      }
-      }
-    });
-    });
-
-    // ✅ Delete Vehicle
-    document.querySelectorAll('.delete-vehicle').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (confirm('Are you sure you want to delete this vehicle?')) {
-      let res = await fetch(`/cashier/vehicles/${btn.dataset.id}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
-      });
-
-      if (res.ok) {
-        btn.closest('tr').remove();
-      } else {
-        alert('Failed to delete vehicle.');
-      }
-      }
-    });
-    });
-
-
-    // ✅ Edit Client
-    document.querySelectorAll('.edit-client').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation(); // 🚀 prevents the row click from firing
+    document.querySelector('#clientsTable tbody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.edit-client');
+      if (!btn) return;
+      e.stopPropagation();
       const modal = document.getElementById('editClientModal');
       modal.querySelector('[name=id]').value = btn.dataset.id;
       modal.querySelector('[name=name]').value = btn.dataset.name;
@@ -494,7 +603,6 @@
       modal.querySelector('[name=phone]').value = btn.dataset.phone;
       modal.querySelector('[name=email]').value = btn.dataset.email;
       new bootstrap.Modal(modal).show();
-    });
     });
 
 
@@ -510,16 +618,21 @@
     });
 
     if (res.ok) {
+      if (typeof showCashierFlashToast === 'function') {
+        showCashierFlashToast('Client updated.', { variant: 'success', reloadAfter: true });
+      } else {
       location.reload();
+      }
     }
     });
 
-    // ✅ Edit Vehicle
-    document.querySelectorAll('.edit-vehicle').forEach(btn => {
-    btn.addEventListener('click', () => {
+    document.querySelector('#vehiclesTable tbody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.edit-vehicle');
+      if (!btn) return;
+      e.stopPropagation();
       const modal = document.getElementById('editVehicleModal');
       modal.querySelector('[name=id]').value = btn.dataset.id;
-      modal.querySelector('[name=client_id]').value = btn.dataset.client_id;
+      modal.querySelector('[name=client_id]').value = btn.dataset.client_id || '';
       modal.querySelector('[name=plate_number]').value = btn.dataset.plate_number;
       modal.querySelector('[name=model]').value = btn.dataset.model;
       modal.querySelector('[name=vin_chasis]').value = btn.dataset.vin_chasis;
@@ -528,7 +641,6 @@
       modal.querySelector('[name=color]').value = btn.dataset.color;
       modal.querySelector('[name=odometer]').value = btn.dataset.odometer;
       new bootstrap.Modal(modal).show();
-    });
     });
 
     document.getElementById('editVehicleForm').addEventListener('submit', async function (e) {
@@ -542,7 +654,11 @@
       body: JSON.stringify(data)
     });
     if (res.ok) {
+      if (typeof showCashierFlashToast === 'function') {
+        showCashierFlashToast('Vehicle updated.', { variant: 'success', reloadAfter: true });
+      } else {
       location.reload();
+      }
     }
     });
   </script>

@@ -10,6 +10,7 @@ class CashDeposit extends Model
         'date',
         'description',
         'amount',
+        'user_id',
     ];
 
     protected $casts = [

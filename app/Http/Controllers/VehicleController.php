@@ -8,14 +8,52 @@ use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
-    public function index()
-    {
-        // load both models
-        $clients  = Client::orderBy('created_at','desc')->get();
-        $vehicles = Vehicle::with('client')->orderBy('created_at','desc')->get();
+    private const PER_PAGE = 25;
 
-        // pass them both into your view
-        return view('cashier.vehicle', compact('clients','vehicles'));
+    public function index(Request $request)
+    {
+        $clientQ = trim((string) $request->get('client_q', ''));
+        $vehicleQ = trim((string) $request->get('vehicle_q', ''));
+
+        $clientsForSelect = Client::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $clientsQuery = Client::query()->orderBy('created_at', 'desc');
+        if ($clientQ !== '') {
+            $like = '%' . addcslashes($clientQ, '%_\\') . '%';
+            $clientsQuery->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('address', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('email', 'like', $like);
+            });
+        }
+        $clients = $clientsQuery
+            ->paginate(self::PER_PAGE, ['*'], 'clients_page')
+            ->withQueryString();
+
+        $vehiclesQuery = Vehicle::query()->with('client')->orderBy('created_at', 'desc');
+        if ($vehicleQ !== '') {
+            $like = '%' . addcslashes($vehicleQ, '%_\\') . '%';
+            $vehiclesQuery->where(function ($q) use ($like) {
+                $q->where('plate_number', 'like', $like)
+                    ->orWhere('model', 'like', $like)
+                    ->orWhere('vin_chasis', 'like', $like)
+                    ->orWhere('manufacturer', 'like', $like)
+                    ->orWhere('year', 'like', $like)
+                    ->orWhere('color', 'like', $like)
+                    ->orWhere('odometer', 'like', $like)
+                    ->orWhereHas('client', function ($cq) use ($like) {
+                        $cq->where('name', 'like', $like);
+                    });
+            });
+        }
+        $vehicles = $vehiclesQuery
+            ->paginate(self::PER_PAGE, ['*'], 'vehicles_page')
+            ->withQueryString();
+
+        return view('cashier.vehicle', compact('clients', 'clientsForSelect', 'vehicles'));
     }
 
     public function store(Request $request)

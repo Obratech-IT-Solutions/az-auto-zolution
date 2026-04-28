@@ -37,8 +37,16 @@ Route::get('/logout', function () {
 });
 
 
-// Redirect root URL to login
+// Root: authenticated users → their dashboard (avoids / ↔ /login loops with RedirectIfAuthenticated)
 Route::get('/', function () {
+     if (Auth::check()) {
+          $role = Auth::user()->role ?? null;
+
+          return $role === 'admin'
+               ? redirect()->route('admin.home')
+               : redirect()->route('cashier.home');
+     }
+
      return redirect()->route('login');
 });
 
@@ -160,6 +168,7 @@ Route::middleware(['auth', 'role:cashier'])
                ->name('serviceorder.ajax.clients');
 
           Route::get('ajax/quotation/clients', [QuotationController::class, 'ajaxSearch'])->name('quotation.ajax.clients');
+          Route::get('ajax/quotation/parts', [QuotationController::class, 'ajaxParts'])->name('quotation.ajax.parts');
 
           // Dashboard
           Route::get('home', [HomeController::class, 'index'])->name('home');
@@ -216,6 +225,7 @@ Route::middleware(['auth', 'role:cashier'])
 
           Route::get('ajax/clients', [InvoiceController::class, 'ajaxClients'])->name('ajax.clients');
           Route::get('ajax/vehicles', [InvoiceController::class, 'ajaxVehicles'])->name('ajax.vehicles');
+          Route::get('ajax/invoice/parts', [InvoiceController::class, 'ajaxParts'])->name('invoice.ajax.parts');
 
           // Inventory CRUD
           Route::resource('inventory', InventoryController::class)

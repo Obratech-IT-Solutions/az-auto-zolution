@@ -15,12 +15,29 @@
 
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <style>
-    .select2-container {
-    width: 100% !important;
+    /* Cap width: avoid full-viewport stretch (inline 95vw was overriding modal-xl) */
+    #invoiceModal .modal-dialog {
+    max-width: min(1140px, calc(100vw - 2rem));
+    margin-left: auto;
+    margin-right: auto;
     }
 
-    .select2-dropdown {
-    z-index: 10060;
+    #invoiceModal .select2-container {
+    width: 100% !important;
+    max-width: 100%;
+    }
+
+    #invoiceModal .select2-container--open {
+    z-index: 100999 !important;
+    }
+
+    #invoiceModal .select2-dropdown {
+    z-index: 100999 !important;
+    max-width: min(100vw - 32px, 640px);
+    border: 1px solid #bbf7d0;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    box-shadow: 0 0.25rem 1rem rgba(22, 101, 52, 0.12);
     }
 
     .btn-source-type {
@@ -28,34 +45,280 @@
     margin-left: 4px;
     }
 
-    .select2-container--default .select2-selection--single {
-    width: 300px !important;
-    /* adjust as needed */
+    /* Invoice index tables (Recent Unpaid/Paid, All Invoices) */
+    table.inv-index-table {
+      table-layout: fixed;
+      width: 100%;
     }
 
-    .select2-container {
-    width: 300px !important;
-    /* ensures container matches */
+    table.inv-index-table thead th,
+    table.inv-index-table tbody td {
+      vertical-align: middle;
     }
 
-    .select2-container--open {
-    z-index: 100999 !important;
+    table.inv-index-table th:nth-child(1),
+    table.inv-index-table td:nth-child(1) {
+      width: 26%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
-    .select2-dropdown {
-    z-index: 100999 !important;
+    table.inv-index-table th:nth-child(2),
+    table.inv-index-table td:nth-child(2) {
+      width: 12%;
+    }
+
+    table.inv-index-table th:nth-child(3),
+    table.inv-index-table td:nth-child(3) {
+      width: 15%;
+    }
+
+    table.inv-index-table th:nth-child(4),
+    table.inv-index-table td:nth-child(4) {
+      width: 16%;
+    }
+
+    table.inv-index-table th:nth-child(5),
+    table.inv-index-table td:nth-child(5) {
+      width: 11%;
+    }
+
+    table.inv-index-table th:nth-child(6),
+    table.inv-index-table td:nth-child(6) {
+      width: 20%;
+    }
+
+    .inv-pay-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      margin-left: auto;
+      margin-right: auto;
+      min-height: 2.25rem;
+    }
+
+    .inv-pill-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      min-height: 2.25rem;
+    }
+
+    .inv-index-table .inv-actions-inner {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      min-height: 2.25rem;
+    }
+
+    .inv-all-invoices-search .form-control {
+      max-width: 28rem;
+    }
+
+    /* Invoice index tables: center service status picker under header */
+    .inv-svc-status-select {
+      min-width: 7.75rem;
+      max-width: 12rem;
+    }
+
+    #invoiceModal .select2-results__options {
+    max-height: min(280px, 45vh) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    }
+
+    #invoiceModal .select2-results__option {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    }
+
+    /* Part row: picker + Manual on one horizontal line */
+    #invoiceModal .inv-inv-line-part-row {
+    gap: 0.35rem !important;
+    }
+
+    #invoiceModal .inv-inv-part-dd .select2-container {
+    min-width: 0;
+    }
+
+    /* Part badges — green + yellow accents (theme) */
+    #invoiceModal .inv-part-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.35rem;
+    border: 1px solid #bbf7d0;
+    background: #ecfdf5;
+    color: #166534;
+    }
+
+    #invoiceModal .inv-part-badge-pop {
+    border-color: #fde047;
+    background: #fef9c3;
+    color: #713f12;
+    }
+
+    #invoiceModal .select2-results__option:last-child .inv-part-opt.border-bottom {
+    border-bottom: none !important;
+    }
+
+    /* Highlighted row: light green wash; badges stay opaque (green + yellow) */
+    #invoiceModal .select2-results__option--highlighted.inv-part-highlight-active,
+    #invoiceModal .select2-container--default .select2-results__option--highlighted {
+      background-color: #d1fae5 !important;
+      color: #14532d !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-code {
+      color: #15803d !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-title {
+      color: #064e3b !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-badge-stk {
+      background: #ffffff !important;
+      border: 1px solid #4ade80 !important;
+      color: #166534 !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-badge-pop {
+      background: #fef08a !important;
+      border: 1px solid #eab308 !important;
+      color: #713f12 !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .badge {
+      background: #ffffff !important;
+      border: 1px solid #86efac !important;
+      color: #166534 !important;
+    }
+
+    /* Search field in dropdown */
+    #invoiceModal .select2-search--dropdown .select2-search__field {
+      margin: 0.25rem 0.5rem 0.5rem;
+      width: calc(100% - 1rem) !important;
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.4rem;
+      border: 1px solid #bbf7d0;
+      background: #fff;
+    }
+
+    #invoiceModal #items-table th.inv-item-drag,
+    #invoiceModal #items-table td.inv-item-drag {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    vertical-align: middle;
+    text-align: center;
+    }
+
+    .inv-item-drag-handle {
+    cursor: grab;
+    touch-action: none;
+    }
+
+    .inv-item-drag-handle:active {
+    cursor: grabbing;
+    }
+
+    #invoiceModal #items-table tbody tr.sortable-ghost {
+    opacity: 0.55;
+    }
+
+    /* Reserve width for money/qty so long part names do not squeeze numeric columns */
+    #invoiceModal #items-table {
+    table-layout: fixed;
+    width: 100%;
+    }
+
+    #invoiceModal #items-table th.inv-col-qty,
+    #invoiceModal #items-table td.inv-col-qty {
+    width: 4.75rem;
+    }
+
+    #invoiceModal #items-table th.inv-col-money,
+    #invoiceModal #items-table td.inv-col-money {
+    width: 8.75rem;
+    min-width: 8.75rem;
+    }
+
+    #invoiceModal #items-table th.inv-col-linetotal,
+    #invoiceModal #items-table td.inv-col-linetotal {
+    width: 8.75rem;
+    }
+
+    #invoiceModal #items-table th.inv-col-actions,
+    #invoiceModal #items-table td.inv-col-actions {
+    width: 3rem;
+    min-width: 3rem;
+    text-align: center;
+    vertical-align: middle;
+    }
+
+    #invoiceModal #items-table td.inv-item-cell {
+    min-width: 0;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+    }
+
+    /* Part picker: full label (no single-line ellipsis) */
+    #invoiceModal #items-table .select2-container--default .select2-selection--single {
+    height: auto;
+    min-height: 2rem;
+    }
+
+    #invoiceModal #items-table .select2-container--default .select2-selection--single .select2-selection__rendered {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    padding-right: 1.75rem !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    }
+
+    #invoiceModal #items-table .select2-container--default .select2-selection--single .select2-selection__arrow {
+    top: 0.65rem;
+    transform: none;
+    height: auto;
+    }
+
+    .inv-part-sel-lines {
+    display: block;
+    max-width: 100%;
+    }
+
+    .inv-part-sel-lines .inv-part-sel-meta {
+    display: block;
+    font-size: 0.72rem;
+    color: #5c6770;
+    margin-top: 0.15rem;
+    font-weight: 400;
     }
   </style>
 
-  <div class="container mt-4 mb-3">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#invoiceModal" id="btnCreateInvoice">
-    <i class="bi bi-plus"></i> Create Invoice
+  {{-- Full width of .content (no .container): a centered .container made the CTA look "floating" vs full-width tables below --}}
+  <div class="mt-4 mb-3 text-start">
+    <div class="invoice-page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <h1 class="h3 mb-0 fw-bold text-body">Invoicing</h1>
+    <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" data-bs-toggle="modal"
+      data-bs-target="#invoiceModal" id="btnCreateInvoice">
+    <i class="bi bi-plus-lg"></i> Create Invoice
     </button>
+    </div>
   </div>
 
   {{-- Invoice Modal --}}
   <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95vw;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
 
     <div class="modal-content">
       <div class="modal-header">
@@ -95,7 +358,7 @@
         </div>
         <div class="card-body p-3">
           <div class="row g-3 mb-3">
-          <div class="col-md-3 client-select-wrapper">
+          <div class="col-12 col-md-6 col-xl-3 client-select-wrapper">
             <label class="form-label fw-bold">Client</label>
             <select name="client_id" id="client_id" class="form-select">
             <option value="">— walk‐in or choose —</option>
@@ -107,14 +370,14 @@
             </select>
           </div>
 
-          <div class="col-md-3 manual-client-wrapper">
+          <div class="col-12 col-md-6 col-xl-3 manual-client-wrapper">
             <label class="form-label fw-bold">Manual Customer Name</label>
             <input type="text" name="customer_name" id="customer_name" class="form-control"
             placeholder="Enter walk-in name" value="{{ old('customer_name', $invoice->customer_name ?? '') }}">
           </div>
 
 
-          <div class="col-md-3 vehicle-select-wrapper">
+          <div class="col-12 col-md-6 col-xl-3 vehicle-select-wrapper">
             <label class="form-label fw-bold">Vehicle</label>
             <select name="vehicle_id" id="vehicle_id" class="form-select">
             <option value="">— walk-in or choose —</option>
@@ -126,7 +389,7 @@
             </select>
           </div>
 
-          <div class="col-md-3 manual-vehicle-wrapper">
+          <div class="col-12 col-md-6 col-xl-3 manual-vehicle-wrapper">
             <label class="form-label fw-bold">Manual Vehicle Name</label>
             <input type="text" name="vehicle_name" id="vehicle_name" class="form-control"
             placeholder="Enter vehicle details" value="{{ old('vehicle_name', $invoice->vehicle_name ?? '') }}">
@@ -136,58 +399,52 @@
           </div>
 
           <div class="row g-3 mb-3">
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Plate</label>
             <input type="text" name="plate" id="plate" class="form-control"
             value="{{ old('plate', isset($invoice->vehicle) ? $invoice->vehicle->plate_number : '') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Model</label>
             <input type="text" name="model" id="model" class="form-control"
             value="{{ old('model', isset($invoice->vehicle) ? $invoice->vehicle->model : '') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Year</label>
             <input type="text" name="year" id="year" class="form-control"
             value="{{ old('year', isset($invoice->vehicle) ? $invoice->vehicle->year : '') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Color</label>
             <input type="text" name="color" id="color" class="form-control"
             value="{{ old('color', isset($invoice->vehicle) ? $invoice->vehicle->color : '') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Odometer</label>
             <input type="text" name="odometer" id="odometer" class="form-control"
             value="{{ old('odometer', isset($invoice->vehicle) ? $invoice->vehicle->odometer : '') }}">
           </div>
           </div>
 
-          <div class="row g-3 mb-3">
-          <div class="col-md-2">
-            <label class="form-label fw-bold">Payment Type</label>
-            <select name="payment_type" class="form-select" style="background:#e6ffe3">
-            <option value="cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'cash')>Cash
-            </option>
-            <option value="debit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'debit')>Debit
-            </option>
-            <option value="credit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'credit')>Credit
-            </option>
-            <option value="non_cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'non_cash')>
-              Non Cash</option>
-            </select>
-          </div>
-          <div class="col-md-2">
+          <div class="row g-3 mb-3 align-items-end">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Status</label>
+            @php
+              $currentStatus = old('status', $invoice->status ?? 'unpaid');
+            @endphp
+            @if($currentStatus === 'paid')
+            <input type="text" class="form-control" value="Paid" readonly>
+            <input type="hidden" name="status" value="paid">
+            @else
             <select name="status" class="form-select">
-            <option value="unpaid" @selected(old('status', $invoice->status ?? '') == 'unpaid')>Unpaid</option>
-            <option value="paid" @selected(old('status', $invoice->status ?? '') == 'paid')>Paid</option>
-            <option value="cancelled" @selected(old('status', $invoice->status ?? '') == 'cancelled')>Cancelled
+            <option value="unpaid" @selected($currentStatus == 'unpaid')>Unpaid</option>
+            <option value="cancelled" @selected($currentStatus == 'cancelled')>Cancelled
             </option>
-            <option value="voided" @selected(old('status', $invoice->status ?? '') == 'voided')>Voided</option>
+            <option value="voided" @selected($currentStatus == 'voided')>Voided</option>
             </select>
+            @endif
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Service Status</label>
             <select name="service_status" class="form-select">
             <option value="pending" @selected(old('service_status', $invoice->service_status ?? '') == 'pending')>
@@ -197,29 +454,31 @@
             </option>
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Source Type</label>
             <input type="text" class="form-control"
             value="{{ old('source_type', $invoice->source_type ?? 'invoicing') }}" readonly>
             <input type="hidden" name="source_type"
             value="{{ old('source_type', $invoice->source_type ?? 'invoicing') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Number</label>
             <input type="number" name="number" class="form-control"
             value="{{ old('number', $invoice->number ?? '') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-sm-6 col-md-4 col-lg-2">
             <label class="form-label fw-bold">Invoice No</label>
             <input type="text" name="invoice_no" class="form-control" placeholder="INV-2025-001"
             value="{{ old('invoice_no', $invoice->invoice_no ?? '') }}" required>
           </div>
-          <div class="col-md-4">
+          </div>
+          <div class="row g-3 mb-1">
+          <div class="col-12 col-md-8">
             <label class="form-label fw-bold">Address</label>
             <input type="text" name="address" class="form-control"
             value="{{ old('address', $invoice->address ?? '') }}">
           </div>
-          <div class="col-md-2">
+          <div class="col-12 col-md-4">
             <label class="form-label fw-bold">Date</label>
             <input type="date" name="created_date" class="form-control"
             value="{{ old('created_date', isset($invoice) ? \Carbon\Carbon::parse($invoice->created_at)->format('Y-m-d') : \Carbon\Carbon::now()->format('Y-m-d')) }}">
@@ -235,28 +494,30 @@
           Items
         </div>
         <div class="card-body p-3">
-          <table class="table table-bordered" id="items-table">
-          <thead>
+          <div class="table-responsive">
+          <table class="table table-bordered mb-0 align-middle" id="items-table">
+          <thead class="table-light">
             <tr>
-            <th style="min-width:250px;">Item</th>
-            <th>Qty</th>
-            <th>Acq. ₱</th>
-            <th>Price ₱</th>
-            <th>Discounted ₱</th>
-            <th>Total ₱</th>
-            <th></th>
+            <th class="inv-item-drag text-center" title="Drag to reorder"><span class="visually-hidden">Reorder</span></th>
+            <th class="inv-item-cell">Item</th>
+            <th class="inv-col-qty">Qty</th>
+            <th class="inv-col-money">Price ₱</th>
+            <th class="inv-col-money">Discounted ₱</th>
+            <th class="inv-col-linetotal text-end">Total ₱</th>
+            <th class="inv-col-actions"><span class="visually-hidden">Remove</span></th>
             </tr>
           </thead>
 
           <tbody></tbody>
           <tfoot>
             <tr>
-            <td colspan="5" class="text-end">
+            <td colspan="7" class="text-end py-2">
               <button type="button" id="add-item" class="btn btn-sm btn-success">+ Add Item</button>
             </td>
             </tr>
           </tfoot>
           </table>
+          </div>
         </div>
         </div>
 
@@ -291,25 +552,119 @@
 
         {{-- Totals --}}
         <div class="row g-3 mb-4">
-        <div class="col-md-3">
-          <label class="form-label fw-bold">Subtotal</label>
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="form-label fw-bold mb-1">Subtotal</label>
           <input type="number" step="0.01" name="subtotal" class="form-control" readonly>
         </div>
-        <div class="col-md-3">
-          <label class="form-label fw-bold">Total Discount</label>
-
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="form-label fw-bold mb-1">Total Discount</label>
           <input type="number" name="total_discount" class="form-control"
           value="{{ old('total_discount', $invoice->total_discount ?? 0) }}">
-
-
         </div>
-        <div class="col-md-3">
-          <label class="form-label fw-bold">VAT (12%)</label>
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="form-label fw-bold mb-1">VAT (12%)</label>
           <input type="number" step="0.01" name="vat_amount" class="form-control">
         </div>
-        <div class="col-md-3">
-          <label class="form-label fw-bold">Grand Total</label>
+        <div class="col-12 col-sm-6 col-md-3">
+          <label class="form-label fw-bold mb-1">Grand Total</label>
           <input type="number" step="0.01" name="grand_total" class="form-control" readonly>
+        </div>
+        </div>
+
+        <div class="card mb-4 border-success">
+        <div class="card-header bg-success bg-opacity-10 fw-bold">Payment (Trans type + split)</div>
+        <div class="card-body p-3">
+          <!-- Row 1: mode + total + trans type -->
+          <div class="row g-3 align-items-start">
+            <div class="col-12 col-md-3">
+              <label class="form-label fw-bold mb-1">Payment mode</label>
+              <select id="payment_mode" class="form-select" style="background:#e6ffe3">
+                <option value="cash_only">Cash only</option>
+                <option value="cashless_only">Cashless only</option>
+                <option value="split">Split (cash + cashless)</option>
+              </select>
+              <div class="form-text text-secondary" style="min-height:1.35rem"><span class="invisible">.</span></div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label fw-bold mb-1">Trans type</label>
+              <select name="payment_type" id="payment_type" class="form-select" style="background:#e6ffe3">
+                <option value="cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'cash')>Cash</option>
+                <option value="gcash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'gcash')>G-Cash</option>
+                <option value="debit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'debit')>Debit</option>
+                <option value="credit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'credit')>Credit</option>
+                <option value="non_cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'non_cash')>Non Cash</option>
+              </select>
+              <div class="form-text text-secondary" id="inv_payment_type_hint">Used as cashless rail when relevant.</div>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label fw-bold mb-1">Total amount (₱)</label>
+              <input type="text" class="form-control fw-semibold" id="payment_total_display" readonly>
+            </div>
+          </div>
+
+          <!-- Below: entry fields (no duplicate "total" — Row 1 Total amount is the sale total) -->
+          <div id="inv-pay-dynamic" class="mt-2 pt-3 border-top border-success-subtle">
+
+            <!-- Split only: how much is cash vs cashless (must sum to Total amount) -->
+            <div id="inv-split-alloc-row" class="row g-3 mb-1 d-none">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold mb-1">Cash amount (₱)</label>
+                <input type="number" step="0.01" name="payment_cash_amount" id="payment_cash_amount" class="form-control"
+                  value="{{ old('payment_cash_amount', isset($invoice) ? $invoice->payment_cash_amount : '') }}">
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold mb-1">Cashless amount (₱)</label>
+                <input type="number" step="0.01" name="payment_non_cash_amount" id="payment_non_cash_amount" class="form-control"
+                  value="{{ old('payment_non_cash_amount', isset($invoice) ? $invoice->payment_non_cash_amount : '') }}">
+              </div>
+              <div class="col-12">
+                <p class="small text-muted mb-0">
+                  For split, cash + cashless normally matches <strong>Grand Total</strong>. If the customer pays more,
+                  <strong>Change</strong> fills as the overage (cash + cashless − Grand Total).
+                </p>
+              </div>
+            </div>
+
+            <!-- Cash only, or split after amounts: physical cash given vs change -->
+            <div id="inv-row-cash-flow" class="row g-3">
+              <div id="inv-cell-cash-tender" class="col-12 col-md-6">
+                <label class="form-label fw-bold mb-1" id="lbl_cash_tender">Amount given (₱)</label>
+                <input type="number" step="0.01" name="cash_tender_amount" id="cash_tender_amount" class="form-control"
+                  value="{{ old('cash_tender_amount', isset($invoice) ? $invoice->cash_tender_amount : '') }}">
+                <div class="form-text small text-muted" id="hint_cash_tender"></div>
+              </div>
+              <div id="inv-cell-cash-change" class="col-12 col-md-6">
+                <label class="form-label fw-bold mb-1" id="lbl_cash_change">Change (₱)</label>
+                <input type="number" step="0.01" name="cash_change_amount" id="cash_change_amount" class="form-control"
+                  value="{{ old('cash_change_amount', isset($invoice) ? $invoice->cash_change_amount : '') }}">
+                <div id="inv-hint-split-change" class="form-text small text-muted d-none">Cash received in hand = cash amount + change (stored for records).</div>
+              </div>
+            </div>
+
+            <!-- Cashless only, or split after cash line: app/transfer paid vs variance -->
+            <div id="inv-row-cashless-flow" class="row g-3 mt-2 d-none">
+              <div id="inv-cell-cashless-paid" class="col-12 col-md-6">
+                <label class="form-label fw-bold mb-1">Paid (cashless) (₱)</label>
+                <input type="number" step="0.01" name="cashless_tender_amount" id="cashless_tender_amount" class="form-control"
+                  value="{{ old('cashless_tender_amount', isset($invoice) ? $invoice->cashless_tender_amount : '') }}">
+              </div>
+              <div id="inv-cell-cashless-variance" class="col-12 col-md-6">
+                <label class="form-label fw-bold mb-1">Cashless variance (₱)</label>
+                <input type="text" class="form-control bg-light" id="cashless_variance_display" readonly tabindex="-1" value="">
+                <div class="form-text small text-muted">Paid minus cashless amount</div>
+              </div>
+            </div>
+
+          </div>
+
+          @if(!isset($invoice) || (($invoice->status ?? 'unpaid') !== 'paid'))
+          <div class="border-top border-success-subtle mt-3 pt-3 text-center">
+            <button type="button" class="btn btn-success px-4" id="btnInvoiceMarkPaid">
+              Mark as paid
+            </button>
+            <p class="form-text small text-muted mb-0 mt-2">Opens a confirmation dialog, then submits this invoice as <strong>Paid</strong> (same as Save).</p>
+          </div>
+          @endif
         </div>
         </div>
 
@@ -324,20 +679,40 @@
     </div>
   </div>
 
+  {{-- Confirm "Mark as paid" (shared: main form + Recent Unpaid table) --}}
+  <div class="modal fade" id="invoiceConfirmPaymentModal" tabindex="-1"
+    aria-labelledby="invoiceConfirmPaymentModalLabel" aria-hidden="true" data-bs-backdrop="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content shadow border-0">
+        <div class="modal-header py-3 border-0 pb-0 position-relative justify-content-center">
+          <h5 class="modal-title fs-6 text-center fw-semibold" id="invoiceConfirmPaymentModalLabel">Confirm payment</h5>
+          <button type="button" class="btn-close position-absolute end-0 me-3 mt-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center px-4 pt-2 pb-0 small text-muted">
+          Record this invoice as paid using the totals and amounts above?
+        </div>
+        <div class="modal-footer border-0 justify-content-center gap-2 pt-3 pb-4 flex-nowrap">
+          <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success btn-sm px-3" id="invoiceConfirmPaymentOk">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {{-- UNPAID INVOICES --}}
   <h3 class="mt-5 fw-bold"><i class="bi bi-exclamation-circle text-warning"></i> Recent Unpaid Invoices</h3>
   @if($filteredUnpaid->isEmpty())
     <div class="alert alert-info">No unpaid invoices in the past 48 hours.</div>
   @else
     <div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle">
+    <table class="table table-hover align-middle inv-index-table">
     <thead class="table-light">
       <tr>
       <th>Customer</th>
       <th>Vehicle</th>
-      <th>Payment</th>
-      <th>Service</th>
-      <th>Status</th>
+      <th class="text-center">Payment</th>
+      <th class="text-center">Service</th>
+      <th class="text-center">Status</th>
       <th class="text-end">Actions</th>
       </tr>
     </thead>
@@ -346,26 +721,32 @@
       <tr>
       <td>{{ $h->client->name ?? $h->customer_name }}</td>
       <td>{{ $h->vehicle->plate_number ?? $h->vehicle_name }}</td>
-      <td>
-      <span
-      class="badge bg-{{ $h->payment_type === 'cash' ? 'success' : ($h->payment_type === 'credit' ? 'primary' : 'secondary') }}">
-      {{ ucfirst(str_replace('_', ' ', $h->payment_type)) }}
-      </span>
+      <td class="text-center align-middle">
+      <div class="inv-pay-wrap">
+      @include('cashier.partials.invoice-payment-column', ['h' => $h])
+      </div>
       </td>
-      <td>
-      <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="d-inline">
+      <td class="text-center align-middle">
+      <div class="inv-pill-center">
+      <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="inv-svc-select-wrap">
       @csrf @method('PUT')
       <input type="hidden" name="status" value="unpaid">
-      <select name="service_status" class="form-select form-select-sm" onchange="this.form.submit()"
+      <select name="service_status" class="form-select form-select-sm inv-svc-status-select" onchange="this.form.submit()"
       data-bs-toggle="tooltip" title="Change Service Status">
       <option value="pending" {{ $h->service_status == 'pending' ? 'selected' : '' }}>Pending</option>
       <option value="in_progress" {{ $h->service_status == 'in_progress' ? 'selected' : '' }}>In Progress</option>
       <option value="done" {{ $h->service_status == 'done' ? 'selected' : '' }}>Done</option>
       </select>
       </form>
+      </div>
       </td>
-      <td><span class="badge bg-warning text-dark">Unpaid</span></td>
-      <td class="text-end">
+      <td class="text-center align-middle">
+      <div class="inv-pill-center">
+      <span class="badge bg-warning text-dark">Unpaid</span>
+      </div>
+      </td>
+      <td class="text-end align-middle">
+      <div class="inv-actions-inner">
       <div class="btn-group">
       <a href="{{ route('cashier.invoice.view', $h->id) }}" class="btn btn-sm btn-outline-info"
       data-bs-toggle="tooltip" title="Print Invoice">
@@ -377,11 +758,14 @@
       </a>
 
       @if(in_array($h->service_status, ['in_progress', 'done']))
-      <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="d-inline">
+      <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="d-inline"
+        id="invoice-quick-mark-{{ $h->id }}">
       @csrf @method('PUT')
       <input type="hidden" name="status" value="paid">
       <input type="hidden" name="service_status" value="{{ $h->service_status }}">
-      <button type="submit" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Mark as Paid">
+      <button type="button" class="btn btn-sm btn-success js-invoice-quick-mark-paid"
+        data-quick-form="invoice-quick-mark-{{ $h->id }}"
+        data-bs-toggle="tooltip" title="Mark as Paid">
       <i class="bi bi-check2-circle"></i>
       </button>
       </form>
@@ -391,6 +775,7 @@
       </button>
       @endif
 
+      </div>
       </div>
       </td>
       </tr>
@@ -406,14 +791,14 @@
     <div class="alert alert-info">No paid invoices in the past 48 hours.</div>
   @else
     <div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle">
+    <table class="table table-hover align-middle inv-index-table">
     <thead class="table-light">
       <tr>
       <th>Customer</th>
       <th>Vehicle</th>
-      <th>Payment</th>
-      <th>Service</th>
-      <th>Status</th>
+      <th class="text-center">Payment</th>
+      <th class="text-center">Service</th>
+      <th class="text-center">Status</th>
       <th class="text-end">Actions</th>
       </tr>
     </thead>
@@ -422,19 +807,28 @@
       <tr>
       <td>{{ $h->client->name ?? $h->customer_name }}</td>
       <td>{{ $h->vehicle->plate_number ?? $h->vehicle_name }}</td>
-      <td>
-      <span
-      class="badge bg-{{ $h->payment_type === 'cash' ? 'success' : ($h->payment_type === 'credit' ? 'primary' : 'secondary') }}">
-      {{ ucfirst(str_replace('_', ' ', $h->payment_type)) }}
-      </span>
+      <td class="text-center align-middle">
+      <div class="inv-pay-wrap">
+      @include('cashier.partials.invoice-payment-column', ['h' => $h])
+      </div>
       </td>
-      <td><span class="badge bg-light text-dark">{{ ucfirst(str_replace('_', ' ', $h->service_status)) }}</span></td>
-      <td><span class="badge bg-success">Paid</span></td>
-      <td class="text-end">
+      <td class="text-center align-middle">
+      <div class="inv-pill-center">
+      <span class="badge bg-light text-dark">{{ ucfirst(str_replace('_', ' ', $h->service_status)) }}</span>
+      </div>
+      </td>
+      <td class="text-center align-middle">
+      <div class="inv-pill-center">
+      <span class="badge bg-success">Paid</span>
+      </div>
+      </td>
+      <td class="text-end align-middle">
+      <div class="inv-actions-inner">
       <a href="{{ route('cashier.invoice.view', $h->id) }}" class="btn btn-sm btn-outline-info"
       data-bs-toggle="tooltip" title="View Invoice">
       <i class="bi bi-eye"></i>
       </a>
+      </div>
       </td>
       </tr>
     @endforeach
@@ -445,11 +839,9 @@
 
   {{-- ALL INVOICES (Paginated) --}}
   <h3 class="mt-5 fw-bold"><i class="bi bi-collection text-secondary"></i> All Invoices</h3>
-  <div class="row mb-3 mt-3">
-    <div class="col-md-6">
+  <div class="inv-all-invoices-search mb-3 mt-3">
     <input type="text" id="live-search" class="form-control" placeholder="Search invoice, customer, or plate...">
 
-    </div>
   </div>
 
 
@@ -463,8 +855,101 @@
   {{-- JS Assets --}}
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script>
-    const parts = @json($parts);
+    const invoicePartsAjaxUrl = @json(route('cashier.invoice.ajax.parts'));
+    window.invoicePartsPrefill = window.invoicePartsPrefill || @json($partsPrefill ?? []);
+
+    /** Select2 dropdown row (AJAX; no full parts[] in DOM) */
+    function invInvoicePartTplResult(data) {
+      if (!data) return $('<span>');
+      if (data.loading) return $('<span class="small text-muted">').text('Loading…');
+      var id = data.id;
+      if (id === '' || id === null || typeof id === 'undefined') {
+        return $('<span class="small text-muted">').text(data.text || '');
+      }
+      if (data.disabled) {
+        return $('<div class="small px-1 py-2 text-danger">').text((data.text || '') + ' (Out of stock)');
+      }
+      var num = (data.part_number != null && String(data.part_number).trim() !== '') ? String(data.part_number).trim() : 'N/A';
+      var title = data.item_name || '';
+      var stk = data.stock !== undefined && data.stock !== null ? Number(data.stock) : NaN;
+      var sold = Number(data.usage_sum || 0);
+      var $wrap = $('<div>', { class: 'inv-part-opt px-2 py-2 border-bottom border-light' });
+      var $head = $('<div>', { class: 'inv-part-head lh-sm mb-2' });
+      $head.append($('<span>', { class: 'inv-part-code fw-medium font-monospace' }).text('[' + num + ']'));
+      $head.append(document.createTextNode(' '));
+      $head.append($('<span>', { class: 'inv-part-title fw-semibold' }).text(title));
+      $wrap.append($head);
+      var badgeRow = $('<div>', { class: 'd-flex flex-wrap gap-2 align-items-center' });
+      badgeRow.append($('<span>', { class: 'inv-part-badge inv-part-badge-stk' }).text(isNaN(stk) ? 'Stock —' : ('Stock ' + stk)));
+      if (sold > 0) {
+        badgeRow.append($('<span>', { class: 'inv-part-badge inv-part-badge-pop' }).text('Popular · Sold ×' + sold));
+      }
+      $wrap.append(badgeRow);
+      return $wrap;
+    }
+
+    function invInvoicePartTplSelection(data) {
+      if (!data || data.id === '' || data.id === null || typeof data.id === 'undefined') {
+        return $('<span class="text-muted small">').text((data && data.text) ? data.text : '-- search part --');
+      }
+      var num = (data.part_number != null && String(data.part_number).trim() !== '') ? String(data.part_number).trim() : 'N/A';
+      var title = data.item_name || '';
+      if (!title && data.text) {
+        var trimmed = String(data.text).replace(/^\[[^\]]+\]\s*/, '');
+        title = trimmed.split(/\s*[·]\s*(?:Stk|Stock)/)[0].trim() || trimmed;
+      }
+      var stk = data.stock !== undefined && data.stock !== null ? Number(data.stock) : NaN;
+      var sold = Number(data.usage_sum || 0);
+      var meta = [];
+      if (!isNaN(stk)) {
+        meta.push('Stk: ' + stk);
+      }
+      if (sold > 0) {
+        meta.push('Sold: ' + sold);
+      }
+      var outOf = !!data.disabled;
+      var $root = $('<div>', { class: 'inv-part-sel-lines small fw-semibold' });
+      $root.css({ color: outOf ? '#b02a37' : 'inherit', paddingRight: '1.75rem' });
+      $root.append(document.createTextNode('[' + num + '] ' + (title || '')));
+      if (meta.length) {
+        $root.append($('<span>', { class: 'inv-part-sel-meta', text: meta.join(' · ') }));
+      }
+      return $root;
+    }
+
+    let invoiceItemsSortable = null;
+
+    function reindexInvoiceItemRows() {
+      $('#items-table tbody tr').each(function (newIdx) {
+        $(this).find('[name]').each(function () {
+          const n = this.getAttribute('name');
+          if (!n || n.indexOf('items[') !== 0) return;
+          const newName = n.replace(/^items\[\d+]/, 'items[' + newIdx + ']');
+          if (newName !== n) this.setAttribute('name', newName);
+        });
+      });
+    }
+
+    function initInvoiceItemsSortable() {
+      const el = document.querySelector('#items-table tbody');
+      if (!el || typeof Sortable === 'undefined') return;
+      if (invoiceItemsSortable) {
+        invoiceItemsSortable.destroy();
+        invoiceItemsSortable = null;
+      }
+      invoiceItemsSortable = Sortable.create(el, {
+        handle: '.inv-item-drag-handle',
+        animation: 150,
+        draggable: 'tr',
+        ghostClass: 'sortable-ghost',
+        onEnd: function () {
+          reindexInvoiceItemRows();
+          recalc();
+        }
+      });
+    }
     const technicians = @json($technicians);
 
 
@@ -486,11 +971,12 @@
         id: client.id,
         text: client.name,
         number: client.number,
-        address: client.address
+        address: client.address,
+        email: client.email
       }))
       })
     },
-    dropdownParent: $('#invoiceModal .modal-content')
+    dropdownParent: $('#invoiceModal')
     });
 
     // Clear vehicle select when new client is selected
@@ -541,7 +1027,7 @@
       }))
       })
     },
-    dropdownParent: $('#invoiceModal .modal-content')
+    dropdownParent: $('#invoiceModal')
     });
 
     // ─── On Vehicle Selected → Autofill Details ───
@@ -559,6 +1045,7 @@
     // ─── Item row with Manual‐toggle + select2 autopopulate ───
     // ─── Item row with Manual-popup + Select2 autopopulate ───
     function addItemRow(data = null) {
+    const invAddRowT0 = (typeof performance !== 'undefined' ? performance.now() : 0);
     const idx = $('#items-table tbody tr').length;
     const partId = data?.part_id || '';
     const qty = data?.quantity || 1;
@@ -568,14 +1055,21 @@
     const lineTotal = (qty && price) ? (qty * price).toFixed(2) : '0.00';
 
     const row = $(`<tr>
-    <td>
-      <div class="input-group">
+    <td class="inv-item-drag align-middle text-center">
+      <button type="button" class="btn btn-link btn-sm inv-item-drag-handle p-0 text-secondary" title="Drag to reorder" aria-label="Drag to reorder row">
+        <i class="fas fa-grip-vertical"></i>
+      </button>
+    </td>
+    <td class="inv-item-cell">
+      <div class="d-flex flex-nowrap align-items-start gap-1 inv-inv-line-part-row">
+      <div class="inv-inv-part-dd flex-grow-1" style="min-width:0">
       <select name="items[${idx}][part_id]"
       class="form-select form-select-sm part-select"
       style="width:100%">
       <option value="">-- search part --</option>
       </select>
-      <button type="button" class="btn btn-warning btn-sm manual-toggle">Manual</button>
+      </div>
+      <button type="button" class="btn btn-warning btn-sm manual-toggle flex-shrink-0">Manual</button>
       </div>
       <div class="manual-fields mt-2 d-none">
     <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" placeholder="Part Name">
@@ -589,53 +1083,66 @@
     </div>
 
     </td>
-    <td><input name="items[${idx}][quantity]" type="number" class="form-control form-control-sm" value="${qty}"></td>
-    <td><input name="items[${idx}][acquisition_price]" type="number" step="0.01" class="form-control form-control-sm acquisition-price" readonly></td>
-    <td><input name="items[${idx}][price]" type="number" step="0.01" class="form-control form-control-sm" value="${price}"></td>
-    <input type="hidden" name="items[${idx}][original_price]" value="${price}">
+    <td class="inv-col-qty"><input name="items[${idx}][quantity]" type="number" class="form-control form-control-sm" value="${qty}">
+      <input type="hidden" name="items[${idx}][acquisition_price]" class="acquisition-price" value="">
+    </td>
+    <td class="inv-col-price inv-col-money">
+      <input name="items[${idx}][price]" type="number" step="0.01" class="form-control form-control-sm" value="${price}">
+      <input type="hidden" name="items[${idx}][original_price]" value="${price}">
+    </td>
 
-    <td><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.discount_value || ''}"></td>
+    <td class="inv-col-discount inv-col-money"><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.discount_value || ''}"></td>
 
-    <td class="col-line-total">${lineTotal}</td>
-    <td><button type="button" class="btn btn-sm btn-danger remove-btn">✕</button></td>
+    <td class="col-line-total inv-col-linetotal text-end"><span class="line-total-amount">${lineTotal}</span></td>
+    <td class="inv-col-actions"><button type="button" class="btn btn-sm btn-danger remove-btn">✕</button></td>
     </tr>`);
 
-    // Setup Select2
-    const select2Data = [
-      { id: '', text: '-- search part --', price: 0, acquisition_price: 0 },
-      ...parts.map(p => ({
-      id: p.id,
-      text: `[${p.part_number}] ${p.item_name} – Stock: ${p.quantity}`,
-      price: Number(p.selling),
-      acquisition_price: Number(p.acquisition_price),
-      disabled: p.quantity <= 0
-      }))
-    ];
-
     const $sel = row.find('.part-select').select2({
-      data: select2Data,
       placeholder: '-- search part --',
       allowClear: true,
-      width: 'resolve',
-      dropdownParent: $('#invoiceModal .modal-content'),
-      templateResult: function (data) {
-      if (!data.id) return data.text;
-      const p = parts.find(p => p.id == data.id);
-      return $('<span>', {
-        text: data.text,
-        css: { color: p && p.quantity <= 0 ? 'red' : 'inherit' }
-      });
-      }
+      width: '100%',
+      dropdownParent: $('#invoiceModal'),
+      minimumInputLength: 0,
+      ajax: {
+        url: invoicePartsAjaxUrl,
+        dataType: 'json',
+        delay: 200,
+        data: function (params) {
+          return { q: params.term || '', page: params.page || 1 };
+        },
+        processResults: function (data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results,
+            pagination: { more: data.pagination.more }
+          };
+        },
+        cache: true
+      },
+      templateResult: invInvoicePartTplResult,
+      templateSelection: invInvoicePartTplSelection
     });
 
+    // #region agent log
+    (function () {
+      var ms = (typeof performance !== 'undefined' && invAddRowT0) ? Math.round(performance.now() - invAddRowT0) : null;
+      var nPref = 0;
+      try { nPref = Object.keys(window.invoicePartsPrefill || {}).length; } catch (e) {}
+      fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' }, body: JSON.stringify({ sessionId: 'c4fe64', location: 'invoice.blade.php:addItemRow', message: 'invoice part select2 ajax init', data: { initMs: ms, prefillKeys: nPref, mode: 'ajax-pagination' }, timestamp: Date.now(), hypothesisId: 'H1', runId: 'invoice-part-perf' }) }).catch(function () {});
+    }());
+    // #endregion
 
     // pre-select on edit
     if (partId) {
-      $sel.val(partId).trigger('change');
-      const pre = select2Data.find(o => o.id == partId);
+      var pre = window.invoicePartsPrefill && window.invoicePartsPrefill[String(partId)];
       if (pre) {
-      row.find('[name$="[price]"]').val(pre.price.toFixed(2));
-      row.find('[name$="[acquisition_price]"]').val(pre.acquisition_price.toFixed(2));
+        var opt = new Option(pre.text, String(pre.id), true, true);
+        $sel.append(opt).trigger('change');
+        row.find('[name$="[price]"]').val(Number(pre.price).toFixed(2));
+        row.find('[name$="[original_price]"]').val(Number(pre.price).toFixed(2));
+        row.find('[name$="[acquisition_price]"]').val(Number(pre.acquisition).toFixed(2));
+      } else {
+        $sel.append(new Option('Part #' + partId, String(partId), true, true)).trigger('change');
       }
     }
 
@@ -644,6 +1151,7 @@
       const price = e.params.data.price || 0;
       const acquisitionPrice = e.params.data.acquisition_price || 0;
       row.find('[name$="[price]"]').val(price.toFixed(2));
+      row.find('[name$="[original_price]"]').val(price.toFixed(2));
       row.find('[name$="[acquisition_price]"]').val(acquisitionPrice.toFixed(2));
       row.find('[name$="[quantity]"]').val(1);
       recalc();
@@ -656,33 +1164,34 @@
 
 
     // remove row
-    row.find('.remove-btn').on('click', () => { row.remove(); recalc(); });
+    row.find('.remove-btn').on('click', () => { row.remove(); reindexInvoiceItemRows(); recalc(); });
 
     // Manual fields handlers
     row.find('.manual-toggle').on('click', () => {
       row.find('.manual-fields').removeClass('d-none');
-      row.find('.input-group').addClass('d-none');
+      row.find('.inv-inv-line-part-row').addClass('d-none');
     });
     row.find('.cancel-manual').on('click', () => {
       row.find('.manual-fields').addClass('d-none');
-      row.find('.input-group').removeClass('d-none');
+      row.find('.inv-inv-line-part-row').removeClass('d-none');
     });
     row.find('.save-manual').on('click', () => {
+      const curIdx = row.index();
       const partName = row.find('[name$="[manual_part_name]"]').val() || '';
       const serial = row.find('[name$="[manual_serial_number]"]').val() || '';
       const acq = parseFloat(row.find('[name$="[manual_acquisition_price]"]').val()) || 0;
       const sell = parseFloat(row.find('[name$="[manual_selling_price]"]').val()) || 0;
 
       row.find('[name$="[price]"]').val(sell.toFixed(2));
+      row.find('[name$="[original_price]"]').val(sell.toFixed(2));
       row.find('[name$="[quantity]"]').val(1);
       row.find('[name$="[acquisition_price]"]').val(acq.toFixed(2));
 
-      // Replace the cell with static inputs to prevent re-editing
-      row.find('td').first().html(`
-    <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${partName}" readonly>
-    <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${serial}" readonly>
-    <input type="number" name="items[${idx}][manual_acquisition_price]" class="form-control form-control-sm mb-1" value="${acq}" readonly>
-    <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" value="${sell}" readonly>
+      row.find('td.inv-item-cell').first().html(`
+    <input type="text" name="items[${curIdx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${String(partName).replace(/"/g, '&quot;')}" readonly>
+    <input type="text" name="items[${curIdx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${String(serial).replace(/"/g, '&quot;')}" readonly>
+    <input type="number" name="items[${curIdx}][manual_acquisition_price]" class="form-control form-control-sm mb-1" value="${acq}" readonly>
+    <input type="number" name="items[${curIdx}][manual_selling_price]" class="form-control form-control-sm mb-1" value="${sell}" readonly>
     `);
 
       recalc();
@@ -690,7 +1199,7 @@
 
     if (data?.manual_part_name) {
       row.find('.manual-fields').removeClass('d-none');
-      row.find('.input-group').addClass('d-none');
+      row.find('.inv-inv-line-part-row').addClass('d-none');
 
       row.find('[name$="[manual_part_name]"]').val(data.manual_part_name);
       row.find('[name$="[manual_serial_number]"]').val(data.manual_serial_number);
@@ -700,10 +1209,9 @@
       row.find('[name$="[acquisition_price]"]').val(data.manual_acquisition_price);
       row.find('[name$="[price]"]').val(data.manual_selling_price);
 
-      // Show readonly version immediately
-      row.find('td').first().html(`
-    <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${data.manual_part_name}" readonly>
-    <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${data.manual_serial_number}" readonly>
+      row.find('td.inv-item-cell').first().html(`
+    <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${String(data.manual_part_name ?? '').replace(/"/g, '&quot;')}" readonly>
+    <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${String(data.manual_serial_number ?? '').replace(/"/g, '&quot;')}" readonly>
     <input type="number" name="items[${idx}][manual_acquisition_price]" class="form-control form-control-sm mb-1" value="${data.manual_acquisition_price}" readonly>
     <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" value="${data.manual_selling_price}" readonly>
     `);
@@ -793,8 +1301,7 @@
 
       itemsTotal += lineTotal;
 
-      // Update line display
-      $r.find('.col-line-total').text(lineTotal.toFixed(2));
+      $r.find('.line-total-amount').text(lineTotal.toFixed(2));
     });
 
     // Calculate jobs total
@@ -812,6 +1319,234 @@
     $('[name="subtotal"]').val(subtotal.toFixed(2));
     $('[name="vat_amount"]').val(vatAmount.toFixed(2));
     $('[name="grand_total"]').val(netAfterDisc.toFixed(2));
+    syncPaymentPanel();
+    }
+
+    function updateChangeFromTender() {
+      const mode = $('#payment_mode').val();
+      const pc = parseFloat($('#payment_cash_amount').val()) || 0;
+      const pn = parseFloat($('#payment_non_cash_amount').val()) || 0;
+
+      if (mode === 'split') {
+        const gt = parseFloat($('[name="grand_total"]').val()) || 0;
+        const totalCollected = pc + pn;
+        const ch = Math.max(0, totalCollected - gt);
+        $('#cash_change_amount').val(totalCollected > 0 ? ch.toFixed(2) : '');
+        $('#cash_tender_amount').val((pc + ch).toFixed(2));
+        // #region agent log
+        fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
+          body: JSON.stringify({
+            sessionId: 'c4fe64',
+            location: 'invoice.blade.php:updateChangeFromTender',
+            message: 'split change from cash+cashless-grand',
+            data: {
+              gt,
+              pc,
+              pn,
+              totalCollected,
+              changeCalc: ch,
+              tenderComputed: $('#cash_tender_amount').val(),
+            },
+            timestamp: Date.now(),
+            hypothesisId: 'H_split_math',
+            runId: window.__invPayDbgRun || 'initial',
+          }),
+        }).catch(() => {});
+        // #endregion agent log
+      } else if (mode === 'cash_only') {
+        const t = $('#cash_tender_amount').val();
+        if (t !== '' && t !== null) {
+          const tender = parseFloat(t);
+          if (!isNaN(tender)) {
+            $('#cash_change_amount').val(Math.max(0, tender - pc).toFixed(2));
+          }
+        }
+      }
+
+      if (mode === 'cashless_only') {
+        const cl = $('#cashless_tender_amount').val();
+        if (cl !== '' && cl !== null) {
+          const c = parseFloat(cl);
+          if (!isNaN(c)) {
+            $('#cashless_variance_display').val((c - pn).toFixed(2));
+          }
+        } else {
+          $('#cashless_variance_display').val('');
+        }
+      }
+    }
+
+    /** Rebuild Trans type options by payment mode: split shows “Cash / …” pairs; others keep single-rail labels. */
+    function rebuildPaymentTypeSelect() {
+      var mode = $('#payment_mode').val();
+      var cur = $('#payment_type').val();
+      var $sel = $('#payment_type').empty();
+      function add(v, label) {
+        $('<option/>', { value: v, text: label }).appendTo($sel);
+      }
+      var splitRails = ['gcash', 'debit', 'credit', 'non_cash'];
+      if (mode === 'split') {
+        add('gcash', 'Cash / G-Cash');
+        add('debit', 'Cash / Debit');
+        add('credit', 'Cash / Credit');
+        add('non_cash', 'Cash / Non cash');
+        if (!cur || cur === 'cash' || splitRails.indexOf(cur) === -1) {
+          cur = 'gcash';
+        }
+      } else if (mode === 'cashless_only') {
+        add('gcash', 'G-Cash');
+        add('debit', 'Debit');
+        add('credit', 'Credit');
+        add('non_cash', 'Non Cash');
+        if (!cur || cur === 'cash') {
+          cur = 'gcash';
+        }
+        if (['gcash', 'debit', 'credit', 'non_cash'].indexOf(cur) === -1) {
+          cur = 'gcash';
+        }
+      } else {
+        add('cash', 'Cash');
+        add('gcash', 'G-Cash');
+        add('debit', 'Debit');
+        add('credit', 'Credit');
+        add('non_cash', 'Non Cash');
+        if (!cur) {
+          cur = 'cash';
+        }
+      }
+      $sel.val(cur);
+      if (!$sel.val()) {
+        $sel.find('option:first').prop('selected', true);
+      }
+      var hint = $('#inv_payment_type_hint');
+      if (hint.length) {
+        hint.text(mode === 'split'
+          ? 'Which cashless method pairs with cash in this split.'
+          : 'Used as cashless rail when relevant.');
+      }
+    }
+
+    function inferPaymentMode(inv) {
+      if (!inv) {
+        $('#payment_mode').val('cash_only');
+        rebuildPaymentTypeSelect();
+        return;
+      }
+      const pc = inv.payment_cash_amount != null && inv.payment_cash_amount !== '' ? parseFloat(inv.payment_cash_amount) : null;
+      const pn = inv.payment_non_cash_amount != null && inv.payment_non_cash_amount !== '' ? parseFloat(inv.payment_non_cash_amount) : null;
+      if (pc != null && pn != null && pc > 0.005 && pn > 0.005) {
+        $('#payment_mode').val('split');
+      } else if (pc != null && (pn == null || pn < 0.005)) {
+        $('#payment_mode').val('cash_only');
+      } else {
+        $('#payment_mode').val('cashless_only');
+      }
+      rebuildPaymentTypeSelect();
+      let ptt = inv.payment_type ? String(inv.payment_type) : '';
+      if ($('#payment_mode').val() === 'split' && ptt === 'cash') {
+        ptt = 'gcash';
+      }
+      if (ptt) {
+        $('#payment_type').val(ptt);
+        if (!$('#payment_type').val()) {
+          $('#payment_type').val($('#payment_mode').val() === 'split' ? 'gcash' : 'cash');
+        }
+      }
+
+      $('#cash_tender_amount').val('');
+      $('#cash_change_amount').val('');
+      $('#cashless_tender_amount').val('');
+
+      const mode = $('#payment_mode').val();
+      if (mode === 'cashless_only') {
+        if (inv.cashless_tender_amount != null && inv.cashless_tender_amount !== '') {
+          $('#cashless_tender_amount').val(inv.cashless_tender_amount);
+        } else if (inv.cash_tender_amount != null && inv.cash_tender_amount !== '') {
+          $('#cashless_tender_amount').val(inv.cash_tender_amount);
+        }
+        return;
+      }
+
+      if (inv.cash_tender_amount != null && inv.cash_tender_amount !== '') $('#cash_tender_amount').val(inv.cash_tender_amount);
+      if (inv.cash_change_amount != null && inv.cash_change_amount !== '') $('#cash_change_amount').val(inv.cash_change_amount);
+      if (mode === 'split' && (inv.cash_change_amount == null || inv.cash_change_amount === '')
+        && inv.cash_tender_amount != null && inv.cash_tender_amount !== '' && pc != null && !isNaN(pc)) {
+        const tn = parseFloat(inv.cash_tender_amount);
+        if (!isNaN(tn)) {
+          $('#cash_change_amount').val(Math.max(0, tn - pc).toFixed(2));
+        }
+      }
+      if (mode === 'split') {
+        $('#cashless_tender_amount').val('');
+      }
+    }
+
+    /** Top row = mode + total + trans. Below: split amounts (split only), cash given+change (cash or split), cashless paid (cashless or split). */
+    function togglePaymentDynamicSection() {
+      const mode = $('#payment_mode').val();
+      $('#inv-split-alloc-row').toggleClass('d-none', mode !== 'split');
+
+      const showCashFlow = mode === 'cash_only' || mode === 'split';
+      const showCashlessFlow = mode === 'cashless_only';
+
+      $('#inv-row-cash-flow').toggleClass('d-none', !showCashFlow);
+      $('#inv-row-cashless-flow').toggleClass('d-none', !showCashlessFlow);
+      $('#inv-cell-cash-tender').toggleClass('d-none', mode === 'split');
+      $('#inv-hint-split-change').toggleClass('d-none', mode !== 'split');
+      $('#inv-cell-cash-change').toggleClass('col-md-6', mode !== 'split');
+
+      if (mode === 'cash_only') {
+        $('#lbl_cash_tender').text('Amount given (₱)');
+        $('#lbl_cash_change').text('Change (₱)');
+        $('#hint_cash_tender').text('Compared to Total amount.');
+      } else if (mode === 'split') {
+        $('#lbl_cash_change').text('Change (₱)');
+      }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
+        body: JSON.stringify({
+          sessionId: 'c4fe64',
+          location: 'invoice.blade.php:togglePaymentDynamicSection',
+          message: 'payment UI visibility',
+          data: {
+            mode,
+            splitShown: !$('#inv-split-alloc-row').hasClass('d-none'),
+            cashFlowShown: !$('#inv-row-cash-flow').hasClass('d-none'),
+            cashlessFlowShown: !$('#inv-row-cashless-flow').hasClass('d-none'),
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'H_layout',
+          runId: window.__invPayDbgRun || 'initial',
+        }),
+      }).catch(() => {});
+      // #endregion agent log
+    }
+
+    function syncPaymentPanel() {
+      rebuildPaymentTypeSelect();
+      const gt = parseFloat($('[name="grand_total"]').val()) || 0;
+      $('#payment_total_display').val(gt.toFixed(2));
+      const mode = $('#payment_mode').val();
+      if (mode === 'cash_only') {
+        $('#payment_cash_amount').val(gt.toFixed(2));
+        $('#payment_non_cash_amount').val('0.00');
+        $('#payment_type').val('cash');
+      } else if (mode === 'cashless_only') {
+        $('#payment_cash_amount').val('0.00');
+        $('#payment_non_cash_amount').val(gt.toFixed(2));
+        var pt = $('#payment_type').val();
+        if (!pt || pt === 'cash') $('#payment_type').val('gcash');
+      } else if (mode === 'split') {
+        $('#cashless_tender_amount').val('');
+        $('#cashless_variance_display').val('');
+      }
+      updateChangeFromTender();
+      togglePaymentDynamicSection();
     }
 
 
@@ -829,6 +1564,26 @@
       e.preventDefault();
       alert('Please remove extra blank rows in Jobs before submitting.');
       return false;
+    }
+    if ($('[name="status"]').val() === 'paid') {
+      const gt = parseFloat($('[name="grand_total"]').val()) || 0;
+      const pc = parseFloat($('#payment_cash_amount').val()) || 0;
+      const pn = parseFloat($('#payment_non_cash_amount').val()) || 0;
+      const ch = parseFloat($('#cash_change_amount').val()) || 0;
+      const isSplit = pc > 0.005 && pn > 0.005;
+      let ok = false;
+      if (isSplit) {
+        ok = Math.abs(pc + pn - gt - ch) <= 0.05;
+      } else {
+        ok = Math.abs(pc + pn - gt) <= 0.05;
+      }
+      if (!ok) {
+        e.preventDefault();
+        alert(isSplit
+          ? 'For split (paid): Cash + cashless must equal Grand Total plus Change (overage back to customer). Use auto-filled Change or edit amounts.'
+          : 'Cash amount + cashless amount must equal Grand Total when status is Paid.');
+        return false;
+      }
     }
     return true;
     });
@@ -860,7 +1615,7 @@
 
 
       });
-    } else {
+    } else if (!invoice) {
       addItemRow();
     }
 
@@ -872,33 +1627,209 @@
         total: job.total
       });
       });
-    } else {
+    } else if (!invoice) {
       addJobRow();
     }
 
     recalc();
+
+    if (invoice) {
+      inferPaymentMode(invoice);
+      if ($('#payment_mode').val() === 'split') {
+        if (invoice.payment_cash_amount != null && invoice.payment_cash_amount !== '') {
+          $('#payment_cash_amount').val(parseFloat(invoice.payment_cash_amount).toFixed(2));
+        }
+        if (invoice.payment_non_cash_amount != null && invoice.payment_non_cash_amount !== '') {
+          $('#payment_non_cash_amount').val(parseFloat(invoice.payment_non_cash_amount).toFixed(2));
+        }
+      }
+      updateChangeFromTender();
+      togglePaymentDynamicSection();
+    } else {
+      $('#payment_mode').val('cash_only');
+      syncPaymentPanel();
+    }
+
+    $('#payment_mode').data('prevPaymentMode', $('#payment_mode').val());
+
+    initInvoiceItemsSortable();
     }
 
     $(function () {
-    // Populate items/jobs when the modal opens for Create
+
+    $('#invoiceModal').on('shown.bs.modal', function () {
+      initInvoiceItemsSortable();
+    });
+
     @if(!isset($invoice))
     $('#invoiceModal').on('show.bs.modal', function () {
       // do nothing — let it keep previous inputs
     });
     @endif
 
-
-
-
-    // If coming from edit (controller passes $invoice), auto open modal
     @if(isset($invoice) && request('modal') == 1)
     $('#invoiceModal').modal('show');
     populateForm(@json($invoice));
     @endif
 
     recalc();
+    $('#payment_mode').data('prevPaymentMode', $('#payment_mode').val());
     // whenever bottom discount changes, re-run recalc()
     $('[name="total_discount"]').on('input', recalc);
+
+    $('#payment_mode').on('change', function () {
+      var $m = $(this);
+      var mode = $m.val();
+      var prev = $m.data('prevPaymentMode');
+      if (mode === 'split' && prev !== 'split' && (prev === 'cash_only' || prev === 'cashless_only')) {
+        $('#payment_cash_amount').val('');
+        $('#payment_non_cash_amount').val('');
+        $('#cash_change_amount').val('');
+        $('#cash_tender_amount').val('');
+        // #region agent log
+        fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
+          body: JSON.stringify({
+            sessionId: 'c4fe64',
+            location: 'invoice.blade.php:paymentModeChange',
+            message: 'cleared split allocation on enter split',
+            data: {
+              hypothesisId: 'H_split_nofill',
+              prev: prev,
+              mode: mode,
+            },
+            timestamp: Date.now(),
+            runId: window.__invPayDbgRun || 'initial',
+          }),
+        }).catch(() => {});
+        // #endregion agent log
+      }
+      $m.data('prevPaymentMode', mode);
+      syncPaymentPanel();
+    });
+    $('#payment_cash_amount, #payment_non_cash_amount, #cash_tender_amount, #cashless_tender_amount, #cash_change_amount').on('input', updateChangeFromTender);
+
+    /** Select-all on focus when value parses to 0 — typing replaces instead of appending after 0.00 (e.g. 0.00344). */
+    function selectAllIfNumericZero(el) {
+      var raw = String($(el).val()).trim();
+      if (raw === '') return false;
+      var n = parseFloat(raw.replace(',', '.'));
+      return !isNaN(n) && Math.abs(n) < 1e-9;
+    }
+    $('#payment_cash_amount, #payment_non_cash_amount, #cash_tender_amount, #cashless_tender_amount, #cash_change_amount').on('focus', function () {
+      var el = this;
+      var sel = selectAllIfNumericZero(el);
+      // #region agent log
+      fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
+        body: JSON.stringify({
+          sessionId: 'c4fe64',
+          location: 'invoice.blade.php:moneyFocus',
+          message: 'payment/tender focus zero-select',
+          data: {
+            hypothesisId: 'H1_cursor_append',
+            id: el.id || el.name,
+            raw: String($(el).val()),
+            selectAllApplied: sel,
+          },
+          timestamp: Date.now(),
+          runId: typeof window.__invPayDbgRun !== 'undefined' ? window.__invPayDbgRun : 'initial',
+        }),
+      }).catch(() => {});
+      // #endregion agent log
+      if (!sel) return;
+      requestAnimationFrame(function () {
+        if (typeof el.select === 'function') el.select();
+      });
+    });
+    $('[name="total_discount"]').on('focus', function () {
+      var el = this;
+      var sel = selectAllIfNumericZero(el);
+      // #region agent log
+      fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
+        body: JSON.stringify({
+          sessionId: 'c4fe64',
+          location: 'invoice.blade.php:discountFocus',
+          message: 'total_discount focus zero-select',
+          data: {
+            hypothesisId: 'H1_discount',
+            selectAllApplied: sel,
+          },
+          timestamp: Date.now(),
+          runId: typeof window.__invPayDbgRun !== 'undefined' ? window.__invPayDbgRun : 'initial',
+        }),
+      }).catch(() => {});
+      // #endregion agent log
+      if (!sel) return;
+      requestAnimationFrame(function () {
+        if (typeof el.select === 'function') el.select();
+      });
+    });
+
+    @if(!isset($invoice) || (($invoice->status ?? 'unpaid') !== 'paid'))
+    $('#btnInvoiceMarkPaid').on('click', function () {
+      window.__pendingInvoiceMarkPaidFormId = null;
+      var el = document.getElementById('invoiceConfirmPaymentModal');
+      if (el) {
+        bootstrap.Modal.getOrCreateInstance(el).show();
+      }
+    });
+    @endif
+    $('#invoiceConfirmPaymentOk').off('click.invMarkPaid').on('click.invMarkPaid', function () {
+      var modalEl = document.getElementById('invoiceConfirmPaymentModal');
+      var pendingFormId = window.__pendingInvoiceMarkPaidFormId;
+      if (pendingFormId) {
+        window.__pendingInvoiceMarkPaidFormId = null;
+        var f = document.getElementById(pendingFormId);
+        var clo = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+        if (clo) clo.hide();
+        // #region agent log
+        fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c4fe64'},body:JSON.stringify({sessionId:'c4fe64',location:'invoice.blade.php:quickMarkPaidConfirm',message:'submit quick mark paid form',data:{hypothesisId:'H_list_mark_paid',formId:String(pendingFormId)},timestamp:Date.now()})}).catch(function(){});
+        // #endregion
+        if (f && typeof f.submit === 'function') f.submit();
+        return;
+      }
+      @if(!isset($invoice) || (($invoice->status ?? 'unpaid') !== 'paid'))
+      var $sel = $('#invoiceForm').find('select[name="status"]');
+      if (!$sel.length) {
+        // #region agent log
+        fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c4fe64'},body:JSON.stringify({sessionId:'c4fe64',location:'invoice.blade.php:markPaidNoStatusSelect',message:'no select[name=status] on invoiceForm',data:{hypothesisId:'H1_no_status_select'},timestamp:Date.now()})}).catch(function(){});
+        // #endregion
+        var h0 = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+        if (h0) h0.hide();
+        return;
+      }
+      if ($sel.find('option[value="paid"]').length === 0) {
+        $sel.append($('<option></option>', { value: 'paid', text: 'Paid' }));
+      }
+      $sel.val('paid');
+      $('#invoiceForm').find('select[name="service_status"]').val('done');
+      var clo2 = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+      if (clo2) clo2.hide();
+      // #region agent log
+      fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c4fe64'},body:JSON.stringify({sessionId:'c4fe64',location:'invoice.blade.php:markPaidConfirm',message:'modal status paid + requestSubmit',data:{hypothesisId:'H2_autosubmit'},timestamp:Date.now()})}).catch(function(){});
+      // #endregion
+      var formEl = document.getElementById('invoiceForm');
+      if (formEl && typeof formEl.requestSubmit === 'function') {
+        formEl.requestSubmit();
+      } else if (formEl) {
+        $(formEl).trigger('submit');
+      }
+      @endif
+    });
+    $(document).on('click', '.js-invoice-quick-mark-paid', function () {
+      var fid = $(this).data('quick-form');
+      if (!fid) return;
+      window.__pendingInvoiceMarkPaidFormId = String(fid);
+      var el = document.getElementById('invoiceConfirmPaymentModal');
+      if (el) {
+        bootstrap.Modal.getOrCreateInstance(el).show();
+      }
+    });
 
     });
 

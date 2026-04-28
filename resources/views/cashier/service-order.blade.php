@@ -3,6 +3,7 @@
 @section('title', isset($invoice) ? 'Edit Service Order' : 'New Service Order')
 
 @section('content')
+@include('cashier.partials.cashier-flash-toast')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <style>
@@ -56,13 +57,6 @@ body {
 <div class="container mt-4">
   <h2 class="mb-4 text-center">{{ isset($invoice) ? 'Edit Service Order' : 'Create Service Order' }}</h2>
 
-  @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      {{ session('success') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  @endif
-
   <form action="{{ isset($invoice) ? route('cashier.serviceorder.update', $invoice->id) : route('cashier.serviceorder.store') }}"
         method="POST" autocomplete="off">
     @csrf
@@ -88,29 +82,18 @@ body {
           <div class="col-md-3">
             <label class="form-label">Manual Customer Name</label>
             <input type="text" name="customer_name" class="form-control"
-                   value="{{ old('customer_name', $invoice->customer_name ?? '') }}">
+                   value="{{ old('customer_name', isset($invoice) ? ($invoice->customer_name ?? '') : '') }}">
           </div>
           <div class="col-md-3">
             <label class="form-label">Vehicle</label>
             <select name="vehicle_id" id="vehicle_id" class="form-select">
               <option value="">— walk-in or choose —</option>
-              @foreach($vehicles as $v)
-                <option value="{{ $v->id }}"
-                  data-plate="{{ $v->plate_number }}"
-                  data-model="{{ $v->model }}"
-                  data-year="{{ $v->year }}"
-                  data-color="{{ $v->color }}"
-                  data-odometer="{{ $v->odometer }}"
-                  {{ old('vehicle_id', $invoice->vehicle_id ?? '') == $v->id ? 'selected' : '' }}>
-                  {{ $v->plate_number }}
-                </option>
-              @endforeach
             </select>
           </div>
           <div class="col-md-3">
             <label class="form-label">Manual Vehicle Name</label>
             <input type="text" name="vehicle_name" class="form-control"
-                   value="{{ old('vehicle_name', $invoice->vehicle_name ?? '') }}">
+                   value="{{ old('vehicle_name', isset($invoice) ? ($invoice->vehicle_name ?? '') : '') }}">
           </div>
         </div>
 
@@ -142,24 +125,42 @@ body {
           </div>
           <div class="col-md-2">
             <label class="form-label">Payment Type</label>
-            <select name="payment_type" class="form-select" style="background:#e6ffe3">
-              <option value="cash" @selected(old('payment_type', $invoice->payment_type ?? '')=='cash')>Cash</option>
-              <option value="debit" @selected(old('payment_type', $invoice->payment_type ?? '')=='debit')>Debit</option>
-              <option value="credit" @selected(old('payment_type', $invoice->payment_type ?? '')=='credit')>Credit</option>
-              <option value="non_cash" @selected(old('payment_type', $invoice->payment_type ?? '')=='non_cash')>Non Cash</option>
+            <select name="payment_type" id="so_payment_type" class="form-select" style="background:#e6ffe3">
+              <option value="cash" @selected(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '')=='cash')>Cash</option>
+              <option value="debit" @selected(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '')=='debit')>Debit</option>
+              <option value="credit" @selected(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '')=='credit')>Credit</option>
+              <option value="non_cash" @selected(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '')=='non_cash')>Non Cash</option>
+              <option value="gcash" @selected(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '')=='gcash')>G-Cash</option>
+              <option value="split" @selected(old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '')=='split')>Split payment</option>
             </select>
+          </div>
+        </div>
+        <div id="so-split-section" class="row g-3 mt-2 {{ old('payment_type', isset($invoice) ? ($invoice->payment_type ?? '') : '') === 'split' ? '' : 'd-none' }}">
+          <div class="col-12">
+            <label class="form-label fw-semibold text-muted">Split payment breakdown</label>
+            <p class="small text-muted mb-2">Planned cash vs cashless (optional when total is not yet final).</p>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Cash amount (₱)</label>
+            <input type="number" step="0.01" name="payment_cash_amount" class="form-control"
+              value="{{ old('payment_cash_amount', isset($invoice) ? $invoice->payment_cash_amount : '') }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Cashless amount (₱)</label>
+            <input type="number" step="0.01" name="payment_non_cash_amount" class="form-control"
+              value="{{ old('payment_non_cash_amount', isset($invoice) ? $invoice->payment_non_cash_amount : '') }}">
           </div>
         </div>
         <div class="row g-3 mt-2">
           <div class="col-md-2">
             <label class="form-label fw-bold">Number</label>
             <input type="number" name="number" class="form-control"
-                   value="{{ old('number', $invoice->number ?? '') }}">
+                   value="{{ old('number', isset($invoice) ? $invoice->number : '') }}">
           </div>
           <div class="col-md-4">
             <label class="form-label fw-bold">Address</label>
             <input type="text" name="address" class="form-control"
-                   value="{{ old('address', $invoice->address ?? '') }}">
+                   value="{{ old('address', isset($invoice) ? $invoice->address : '') }}">
           </div>
         </div>
       </div>
@@ -194,13 +195,11 @@ body {
 
                 <td><span class="badge bg-secondary">{{ ucfirst(str_replace('_',' ', $h->source_type)) }}</span></td>
                 <td class="d-flex gap-2">
-  <form action="{{ route('cashier.serviceorder.destroy', $h->id) }}" method="POST" onsubmit="return confirm('Delete this Service Order?')">
-    @csrf
-    @method('DELETE')
-    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-      <i class="bi bi-trash"></i>
-    </button>
-  </form>
+  <button type="button" class="btn btn-sm btn-outline-danger service-order-delete-btn" title="Delete"
+    data-bs-toggle="modal" data-bs-target="#serviceOrderDeleteModal"
+    data-delete-action="{{ route('cashier.serviceorder.destroy', $h->id) }}">
+    <i class="bi bi-trash"></i>
+  </button>
 
   <button type="button" class="btn btn-sm btn-outline-primary" title="Edit"
     onclick="openEditModal(
@@ -295,6 +294,8 @@ body {
         <option value="debit">Debit</option>
         <option value="credit">Credit</option>
         <option value="non_cash">Non Cash</option>
+        <option value="gcash">G-Cash</option>
+        <option value="split">Split payment</option>
       </select>
     </div>
   </div>
@@ -323,6 +324,27 @@ body {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+(function () {
+  var modalEl = document.getElementById('serviceOrderDeleteModal');
+  var formEl = document.getElementById('serviceOrderDeleteForm');
+  if (modalEl && formEl) {
+    modalEl.addEventListener('show.bs.modal', function (event) {
+      var btn = event.relatedTarget;
+      if (!btn) return;
+      formEl.setAttribute('action', btn.getAttribute('data-delete-action') || '');
+    });
+    var confirmBtn = document.getElementById('serviceOrderDeleteConfirmBtn');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', function () {
+        if (!formEl.getAttribute('action')) return;
+        var inst = typeof bootstrap !== 'undefined' && bootstrap.Modal
+          ? bootstrap.Modal.getInstance(modalEl) : null;
+        if (inst) inst.hide();
+        formEl.submit();
+      });
+    }
+  }
+})();
 function openEditModal(id, customer, vehicle, number, address, plate, model, year, color, odometer, payment) {
     $('#edit-id').val(id);
     $('#edit-customer').val(customer);
@@ -345,15 +367,6 @@ function openEditModal(id, customer, vehicle, number, address, plate, model, yea
 
 </script>
 
-<script>
-const vehicles = @json($vehicles);
-
-$('#vehicle_id').on('change', function() {
-  let s = $(this).find(':selected');
-  $('#plate').val(s.data('plate')||''); $('#model').val(s.data('model')||'');
-  $('#year').val(s.data('year')||''); $('#color').val(s.data('color')||''); $('#odometer').val(s.data('odometer')||'');
-});
-</script>
 <script>
 $(document).ready(function() {
     // Initialize Select2 for Client and Vehicle dropdowns
@@ -381,15 +394,34 @@ $(document).ready(function() {
     },
     templateResult: function(data) {
         if (data.loading) return data.text;
-        return $('<span>' + data.text + ' <small class="text-muted">' + (data.number || '') + ' | ' + (data.address || '') + '</small></span>');
+        var parts = [];
+        if (data.number !== undefined && data.number !== null && String(data.number).trim() !== '') {
+            parts.push(String(data.number));
+        }
+        if (data.address && String(data.address).trim() !== '') {
+            parts.push(String(data.address));
+        }
+        if (data.plate && String(data.plate).trim() !== '') {
+            parts.push(String(data.plate));
+        }
+        var sub = parts.join(' · ');
+        var $row = $('<span>');
+        $row.append(document.createTextNode(data.text || ''));
+        if (sub) {
+            $row.append(document.createTextNode(' '));
+            $row.append($('<small class="text-muted">').text(sub));
+        }
+        return $row;
     },
     templateSelection: function (data) {
         if (!data.id) return data.text;
         setTimeout(function () {
-            $('input[name="number"]').val(data.number || '');
+            var num = data.number;
+            $('input[name="number"]').val(num !== undefined && num !== null ? String(num) : '');
             $('input[name="address"]').val(data.address || '');
         }, 100);
-        return data.text;
+        var plate = data.plate && String(data.plate).trim() !== '' ? ' — ' + data.plate : '';
+        return (data.text || '') + plate;
     },
     placeholder: '— walk‐in or choose —',
     minimumInputLength: 0,
@@ -405,29 +437,63 @@ $('#client_id').on('select2:open', function () {
 
     $('#vehicle_id').select2({
         placeholder: '— walk-in or choose —',
-        allowClear: true
+        allowClear: true,
+        ajax: {
+            url: '{{ route("cashier.ajax.vehicles") }}',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({
+                q: params.term || '',
+                client_id: $('#client_id').val() || ''
+            }),
+            processResults: data => ({
+                results: data.map(v => ({
+                    id: v.id,
+                    text: v.plate_number,
+                    plate_number: v.plate_number,
+                    model: v.model,
+                    year: v.year,
+                    color: v.color,
+                    odometer: v.odometer
+                }))
+            })
+        }
     });
 
-    // Handle dependent vehicle list when client changes
-    const vehicles = @json($vehicles);
     $('#client_id').on('change', function() {
-        const clientId = $(this).val();
-        const filtered = vehicles.filter(v => v.client_id == clientId);
-        $('#vehicle_id').empty().append('<option value="">— walk-in or choose —</option>');
-        filtered.forEach(v => {
-            $('#vehicle_id').append(`<option value="${v.id}" data-plate="${v.plate_number}" data-model="${v.model}" data-year="${v.year}" data-color="${v.color}" data-odometer="${v.odometer}">${v.plate_number}</option>`);
-        });
-        $('#vehicle_id').trigger('change'); // re-apply select2
+        $('#vehicle_id').val(null).trigger('change');
     });
 
-    $('#vehicle_id').on('change', function() {
-        let s = $(this).find(':selected');
-        $('#plate').val(s.data('plate') || '');
-        $('#model').val(s.data('model') || '');
-        $('#year').val(s.data('year') || '');
-        $('#color').val(s.data('color') || '');
-        $('#odometer').val(s.data('odometer') || '');
+    $('#vehicle_id').on('select2:select', function(e) {
+        const v = e.params.data;
+        $('#plate').val(v.plate_number || '');
+        $('#model').val(v.model || '');
+        $('#year').val(v.year || '');
+        $('#color').val(v.color || '');
+        $('#odometer').val(v.odometer || '');
     });
+
+    function toggleSoSplitPayment() {
+        $('#so-split-section').toggleClass('d-none', $('#so_payment_type').val() !== 'split');
+    }
+    $('#so_payment_type').on('change', toggleSoSplitPayment);
+    toggleSoSplitPayment();
+
+    @if(isset($invoice) && $invoice->client)
+    const soClientOpt = new Option(@json($invoice->client->select2Label($invoice->customer_name, optional($invoice->vehicle)->plate_number)), @json((string) $invoice->client->id), true, true);
+    $('#client_id').append(soClientOpt).trigger('change');
+    @endif
+    @if(isset($invoice) && $invoice->vehicle)
+    const soVehOpt = new Option("{{ $invoice->vehicle->plate_number }}", "{{ $invoice->vehicle->id }}", true, true);
+    $(soVehOpt).attr({
+      'data-plate': "{{ $invoice->vehicle->plate_number }}",
+      'data-model': "{{ $invoice->vehicle->model }}",
+      'data-year': "{{ $invoice->vehicle->year }}",
+      'data-color': "{{ $invoice->vehicle->color }}",
+      'data-odometer': "{{ $invoice->vehicle->odometer }}"
+    });
+    $('#vehicle_id').append(soVehOpt).trigger('change');
+    @endif
 
     // Show/hide client/vehicle fields
     function toggleFields() {

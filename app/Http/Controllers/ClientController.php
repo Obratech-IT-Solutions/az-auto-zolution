@@ -9,8 +9,7 @@ class ClientController extends Controller
 {
     public function index()
     {
-        $clients = Client::orderBy('created_at', 'desc')->get();
-        return view('cashier.vehicle', compact('clients'));
+        return redirect()->route('cashier.vehicles.index');
     }
 
     public function store(Request $request)

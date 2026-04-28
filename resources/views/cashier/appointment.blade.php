@@ -195,37 +195,31 @@
         <label for="client_id" class="form-label">Select Client</label>
         <select name="client_id" id="client_id" class="form-select">
           <option value="">Select client</option>
-          @foreach($clients as $c)
-        <option value="{{ $c->id }}" data-phone="{{ $c->phone }}" data-email="{{ $c->email }}"
-        data-address="{{ $c->address }}" {{ old('client_id', $invoice->client_id ?? '') == $c->id ? 'selected' : '' }}>
-        {{ $c->name }}
-        </option>
-      @endforeach
         </select>
         </div>
 
         <div class="col-md-3" id="manual-customer-wrap">
         <label for="customer_name" class="form-label">Manual Customer</label>
         <input type="text" name="customer_name" id="customer_name" class="form-control"
-          value="{{ old('customer_name', $invoice->customer_name ?? '') }}">
+          value="{{ old('customer_name', isset($invoice) ? ($invoice->customer_name ?? '') : '') }}">
         </div>
 
         <div class="col-md-3">
         <label for="phone" class="form-label">Phone</label>
         <input type="text" name="phone" id="phone" class="form-control"
-          value="{{ old('phone', $invoice->client->phone ?? '') }}">
+          value="{{ old('phone', isset($invoice) && $invoice->client ? $invoice->client->phone : '') }}">
         </div>
 
         <div class="col-md-3">
         <label for="email" class="form-label">Email</label>
         <input type="email" name="email" id="email" class="form-control"
-          value="{{ old('email', $invoice->client->email ?? '') }}">
+          value="{{ old('email', isset($invoice) && $invoice->client ? $invoice->client->email : '') }}">
         </div>
 
         <div class="col-md-6">
         <label for="address" class="form-label">Address</label>
         <input type="text" name="address" id="address" class="form-control"
-          value="{{ old('address', $invoice->client->address ?? '') }}">
+          value="{{ old('address', isset($invoice) && $invoice->client ? $invoice->client->address : '') }}">
         </div>
       </div>
       </div>
@@ -240,18 +234,13 @@
         <label for="vehicle_id" class="form-label">Select Vehicle</label>
         <select name="vehicle_id" id="vehicle_id" class="form-select">
           <option value="">Select vehicle</option>
-          @foreach($vehicles as $v)
-        <option value="{{ $v->id }}" {{ old('vehicle_id', $invoice->vehicle_id ?? '') == $v->id ? 'selected' : '' }}>
-        {{ $v->plate_number }}
-        </option>
-      @endforeach
         </select>
         </div>
 
         <div class="col-md-3" id="manual-vehicle-wrap">
         <label for="vehicle_name" class="form-label">Manual Vehicle</label>
         <input type="text" name="vehicle_name" id="vehicle_name" class="form-control"
-          value="{{ old('vehicle_name', $invoice->vehicle_name ?? '') }}">
+          value="{{ old('vehicle_name', isset($invoice) ? ($invoice->vehicle_name ?? '') : '') }}">
         </div>
       </div>
 
@@ -302,7 +291,7 @@
       <div class="mb-3">
         <label for="note" class="form-label">Notes</label>
         <textarea name="note" id="note" class="form-control"
-        placeholder="Appointment note">{{ old('note', $invoice->note ?? '') }}</textarea>
+        placeholder="Appointment note">{{ old('note', isset($invoice) ? ($invoice->note ?? '') : '') }}</textarea>
       </div>
       <button
         class="btn btn-primary shadow-sm">{{ isset($invoice) ? 'Update Appointment' : 'Save Appointment' }}</button>
@@ -407,63 +396,81 @@
 
   <script>
 
-    const clients = @json($clients);  // Assuming clients data is available
-    const vehicles = @json($vehicles);  // Assuming vehicles data is available
-
-    // Client and Vehicle Search
     $('#client_id').select2({
     placeholder: 'Select client',
-    allowClear: true
+    allowClear: true,
+    ajax: {
+      url: '{{ route("cashier.ajax.clients") }}',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ q: params.term || '' }),
+      processResults: data => ({
+      results: data.map(c => ({
+        id: c.id,
+        text: c.name,
+        number: c.number,
+        address: c.address,
+        email: c.email
+      }))
+      })
+    }
+    }).on('select2:select', function (e) {
+    const c = e.params.data;
+    $('#phone').val(c.number || '');
+    $('#email').val(c.email || '');
+    $('#address').val(c.address || '');
+    $('#vehicle_id').val(null).trigger('change');
     });
 
     $('#vehicle_id').select2({
     placeholder: 'Select vehicle',
-    allowClear: true
+    allowClear: true,
+    ajax: {
+      url: '{{ route("cashier.ajax.vehicles") }}',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({
+      q: params.term || '',
+      client_id: $('#client_id').val() || ''
+      }),
+      processResults: data => ({
+      results: data.map(v => ({
+        id: v.id,
+        text: v.plate_number,
+        plate_number: v.plate_number,
+        model: v.model,
+        year: v.year,
+        color: v.color,
+        odometer: v.odometer
+      }))
+      })
+    }
     });
 
-    /// When a client is selected, fetch and populate vehicle options with data attributes
-    $('#client_id').on('change', function () {
-    const clientId = $(this).val();
-    const selectedClient = $(this).find(':selected');
-
-    // Autofill client contact info
-    $('#phone').val(selectedClient.data('phone') || '');
-    $('#email').val(selectedClient.data('email') || '');
-    $('#address').val(selectedClient.data('address') || '');
-
-    // Filter and populate vehicle dropdown
-    const filteredVehicles = vehicles.filter(vehicle => vehicle.client_id == clientId);
-
-    $('#vehicle_id').empty().append(`<option value="">— walk-in or choose —</option>`);
-    filteredVehicles.forEach(vehicle => {
-      $('#vehicle_id').append(`
-      <option value="${vehicle.id}"
-      data-plate="${vehicle.plate_number || ''}"
-      data-model="${vehicle.model || ''}"
-      data-year="${vehicle.year || ''}"
-      data-color="${vehicle.color || ''}"
-      data-odometer="${vehicle.odometer || ''}">
-      ${vehicle.plate_number}
-      </option>
-    `);
+    $('#vehicle_id').on('select2:select', function (e) {
+    const v = e.params.data;
+    $('#plate').val(v.plate_number || '');
+    $('#model').val(v.model || '');
+    $('#year').val(v.year || '');
+    $('#color').val(v.color || '');
+    $('#odometer').val(v.odometer || '');
     });
 
-    $('#vehicle_id').select2({
-      placeholder: '-- search vehicle --',
-      allowClear: true
+    @if(isset($invoice) && $invoice->client)
+    const apptClientOpt = new Option(@json($invoice->client->select2Label($invoice->customer_name, optional($invoice->vehicle)->plate_number)), @json((string) $invoice->client->id), true, true);
+    $('#client_id').append(apptClientOpt).trigger('change');
+    @endif
+    @if(isset($invoice) && $invoice->vehicle)
+    const apptVehOpt = new Option("{{ $invoice->vehicle->plate_number }}", "{{ $invoice->vehicle->id }}", true, true);
+    $(apptVehOpt).attr({
+      'data-plate': "{{ $invoice->vehicle->plate_number }}",
+      'data-model': "{{ $invoice->vehicle->model }}",
+      'data-year': "{{ $invoice->vehicle->year }}",
+      'data-color': "{{ $invoice->vehicle->color }}",
+      'data-odometer': "{{ $invoice->vehicle->odometer }}"
     });
-    });
-
-
-    // VEHICLE DETAILS AUTOFILL
-    $('#vehicle_id').on('change', function () {
-    let selected = $(this).find(':selected');
-    $('#plate').val(selected.data('plate') || '');
-    $('#model').val(selected.data('model') || '');
-    $('#year').val(selected.data('year') || '');
-    $('#color').val(selected.data('color') || '');
-    $('#odometer').val(selected.data('odometer') || '');
-    });
+    $('#vehicle_id').append(apptVehOpt).trigger('change');
+    @endif
 
 
 

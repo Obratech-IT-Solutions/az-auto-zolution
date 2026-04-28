@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\Vehicle;
+use App\Services\ClientVehicleResolver;
+use App\Support\CashierListLimits;
+use Illuminate\Support\Facades\DB;
 
 
 class AppointmentController extends Controller
@@ -14,9 +17,8 @@ class AppointmentController extends Controller
     // Show the appointment creation page
     public function index()
     {
-        // Fetch the required data
-        $clients = Client::all();
-        $vehicles = Vehicle::all();
+        $clients = collect();
+        $vehicles = collect();
 
         // Fetch history of invoices related to clients and vehicles
         $history = Invoice::with(['client', 'vehicle'])
@@ -51,8 +53,8 @@ class AppointmentController extends Controller
     // Show the form to create a new appointment
     public function create()
     {
-        $clients = Client::all();
-        $vehicles = Vehicle::all();
+        $clients = collect();
+        $vehicles = collect();
         $history = collect([]);
         $events = [];
 
@@ -82,69 +84,38 @@ class AppointmentController extends Controller
             'address' => 'nullable|string|max:255',
         ]);
 
-        // Handle manual client creation
-        $clientId = $request->client_id;
-        if (!$clientId && $request->customer_name) {
-            $client = Client::create([
-                'name' => $request->customer_name,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'address' => $request->address,
-            ]);
-            $clientId = $client->id;
-        } elseif ($clientId) {
-            $client = Client::find($clientId);
-            if ($client) {
-                $client->update([
-                    'phone' => $request->phone,
-                    'email' => $request->email,
-                    'address' => $request->address,
-                ]);
-            }
+        $resolver = app(ClientVehicleResolver::class);
+        $clientId = $resolver->resolveClientId($request);
+
+        $vehicleId = $resolver->resolveVehicleId($request, $clientId);
+
+        $manualCustomer = trim((string) $request->input('customer_name', ''));
+        if (Client::isPlaceholderLabel($manualCustomer)) {
+            $manualCustomer = '';
         }
 
-
-        // Handle vehicle logic
-        $vehicleId = $request->vehicle_id;
-        if ($vehicleId) {
-            $vehicle = Vehicle::find($vehicleId);
-            if ($vehicle) {
-                $vehicle->update([
-                    'plate_number' => $request->plate,
-                    'model' => $request->model,
-                    'year' => $request->year,
-                    'color' => $request->color,
-                    'odometer' => $request->odometer,
+        DB::transaction(function () use ($request, $clientId, $vehicleId, $manualCustomer) {
+            if ($request->filled('client_id') && $clientId) {
+                Client::where('id', $clientId)->update([
+                    'phone' => $request->input('phone'),
+                    'email' => $request->input('email'),
+                    'address' => $request->input('address'),
                 ]);
             }
-        } else if ($request->plate || $request->model || $request->year || $request->color || $request->odometer) {
-            // Always use resolved $clientId here
-            $vehicle = Vehicle::create([
-                'plate_number' => $request->plate,
-                'model' => $request->model,
-                'year' => $request->year,
-                'color' => $request->color,
-                'odometer' => $request->odometer,
+
+            Invoice::create([
                 'client_id' => $clientId,
+                'vehicle_id' => $vehicleId,
+                'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
+                'vehicle_name' => $vehicleId ? null : $request->vehicle_name,
+                'source_type' => 'appointment',
+                'service_status' => 'pending',
+                'status' => 'unpaid',
+
+                'appointment_date' => $request->appointment_date,
+                'note' => $request->note,
             ]);
-            $vehicleId = $vehicle->id;
-        } else {
-            $vehicleId = null;
-        }
-
-        // Create appointment invoice
-        $invoice = Invoice::create([
-            'client_id' => $clientId,
-            'vehicle_id' => $vehicleId,
-            'customer_name' => $request->customer_name,
-            'vehicle_name' => $request->vehicle_name,
-            'source_type' => 'appointment',
-            'service_status' => 'pending',
-            'status' => 'unpaid',
-
-            'appointment_date' => $request->appointment_date,
-            'note' => $request->note,
-        ]);
+        });
 
         return redirect()->route('cashier.appointment.index')->with('success', 'Appointment created!');
     }
@@ -153,9 +124,13 @@ class AppointmentController extends Controller
     // Show the form for editing an existing quotation (appointment)
     public function edit($id)
     {
-        $invoice = Invoice::findOrFail($id);
-        $clients = Client::all();
-        $vehicles = Vehicle::all();
+        $invoice = Invoice::with(['client', 'vehicle'])->findOrFail($id);
+        $clients = $invoice->client_id
+            ? Client::where('id', $invoice->client_id)->get(['id', 'name', 'phone', 'email', 'address'])
+            : collect();
+        $vehicles = $invoice->vehicle_id
+            ? Vehicle::where('id', $invoice->vehicle_id)->get(['id', 'plate_number', 'model', 'client_id', 'year', 'color', 'odometer'])
+            : collect();
         $history = Invoice::with(['client', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -216,68 +191,38 @@ class AppointmentController extends Controller
             'address' => 'nullable|string|max:255',
         ]);
 
-        // Handle manual client creation on update
-        $clientId = $request->client_id;
-        if (!$clientId && $request->customer_name) {
-            $client = Client::create([
-                'name' => $request->customer_name,
-                'phone' => $request->phone,
-                'email' => $request->email,
-                'address' => $request->address,
-            ]);
-            $clientId = $client->id;
-        } elseif ($clientId) {
-            $client = Client::find($clientId);
-            if ($client) {
-                $client->update([
-                    'phone' => $request->phone,
-                    'email' => $request->email,
-                    'address' => $request->address,
-                ]);
-            }
+        $resolver = app(ClientVehicleResolver::class);
+        $clientId = $resolver->resolveClientId($request);
+
+        $vehicleId = $resolver->resolveVehicleId($request, $clientId);
+
+        $manualCustomer = trim((string) $request->input('customer_name', ''));
+        if (Client::isPlaceholderLabel($manualCustomer)) {
+            $manualCustomer = '';
         }
 
-
-        // Handle vehicle update logic
-        $vehicleId = $request->vehicle_id;
-        if ($vehicleId) {
-            $vehicle = Vehicle::find($vehicleId);
-            if ($vehicle) {
-                $vehicle->update([
-                    'plate_number' => $request->plate,
-                    'model' => $request->model,
-                    'year' => $request->year,
-                    'color' => $request->color,
-                    'odometer' => $request->odometer,
+        DB::transaction(function () use ($request, $invoice, $clientId, $vehicleId, $manualCustomer) {
+            if ($request->filled('client_id') && $clientId) {
+                Client::where('id', $clientId)->update([
+                    'phone' => $request->input('phone'),
+                    'email' => $request->input('email'),
+                    'address' => $request->input('address'),
                 ]);
             }
-        } else if ($request->plate || $request->model || $request->year || $request->color || $request->odometer) {
-            $vehicle = Vehicle::create([
-                'plate_number' => $request->plate,
-                'model' => $request->model,
-                'year' => $request->year,
-                'color' => $request->color,
-                'odometer' => $request->odometer,
+
+            $invoice->update([
                 'client_id' => $clientId,
+                'vehicle_id' => $vehicleId,
+                'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
+                'vehicle_name' => $vehicleId ? null : $request->vehicle_name,
+                'source_type' => 'appointment',
+                'service_status' => 'pending',
+                'status' => 'unpaid',
+
+                'appointment_date' => $request->appointment_date,
+                'note' => $request->note,
             ]);
-            $vehicleId = $vehicle->id;
-        } else {
-            $vehicleId = null;
-        }
-
-        // Update the invoice
-        $invoice->update([
-            'client_id' => $clientId,
-            'vehicle_id' => $vehicleId,
-            'customer_name' => $request->customer_name,
-            'vehicle_name' => $request->vehicle_name,
-            'source_type' => 'appointment',
-            'service_status' => 'pending',
-            'status' => 'unpaid',
-
-            'appointment_date' => $request->appointment_date,
-            'note' => $request->note,
-        ]);
+        });
 
         return redirect()->route('cashier.appointment.index')->with('success', 'Appointment updated!');
     }

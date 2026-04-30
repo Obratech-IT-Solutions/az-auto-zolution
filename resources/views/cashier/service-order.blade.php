@@ -471,7 +471,6 @@ $(document).ready(function() {
     $('#vehicle_id').select2({
         placeholder: '— walk-in or choose —',
         allowClear: true,
-        closeOnSelect: false,
         ajax: {
             url: '{{ route("cashier.ajax.vehicles") }}',
             dataType: 'json',

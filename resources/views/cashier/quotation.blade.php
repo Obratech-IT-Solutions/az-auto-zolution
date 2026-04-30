@@ -676,7 +676,6 @@
     $('#vehicle_id').select2({
       placeholder: '-- search vehicle --',
       allowClear: true,
-      closeOnSelect: false,
       ajax: {
       url: '{{ route("cashier.ajax.vehicles") }}',
       dataType: 'json',

@@ -28,6 +28,11 @@
         text-align: center;
         white-space: nowrap;
     }
+    .history-list-table .hist-lastprocessed {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        font-size: 0.9rem;
+    }
 </style>
 <div class="container mt-4">
     {{-- Search Bar --}}
@@ -64,13 +69,14 @@
             <h4 class="mt-4">{{ $date }}</h4>
             <table class="table table-striped table-bordered align-middle history-list-table mb-3">
                 <colgroup>
+                    <col style="width: 10%;">
+                    <col style="width: 16%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
                     <col style="width: 11%;">
-                    <col style="width: 19%;">
-                    <col style="width: 11%;">
-                    <col style="width: 12%;">
+                    <col style="width: 9%;">
                     <col style="width: 13%;">
-                    <col style="width: 11%;">
-                    <col style="width: 11%;">
+                    <col style="width: 9%;">
                     <col style="width: 12%;">
                 </colgroup>
                 <thead class="table-light">
@@ -81,6 +87,7 @@
                         <th class="hist-tag">Source Type</th>
                         <th class="hist-pay">Payment Type</th>
                         <th class="hist-svc">Service Status</th>
+                        <th class="hist-lastprocessed">Last processed log</th>
                         <th class="hist-tag">Status</th>
                         <th class="hist-view">View</th>
                     </tr>
@@ -98,6 +105,7 @@
                             </td>
                             <td class="hist-pay">{{ $h->paymentTypeDisplay() }}</td>
                             <td class="hist-svc">{{ ucfirst(str_replace('_',' ', $h->service_status)) }}</td>
+                            <td class="hist-lastprocessed">{{ $h->lastProcessedByUser?->attributionName() ?? '—' }}</td>
                             <td class="hist-tag">
                                 <span class="badge {{ $statusBadge[$h->status] ?? 'bg-secondary' }}">
                                     {{ ucfirst($h->status) }}

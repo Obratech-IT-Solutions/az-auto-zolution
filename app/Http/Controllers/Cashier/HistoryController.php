@@ -11,7 +11,7 @@ class HistoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Invoice::with(['client', 'vehicle'])
+        $query = Invoice::with(['client', 'vehicle', 'lastProcessedByUser'])
             ->orderByDesc('created_at');
 
         if ($request->filled('search')) {

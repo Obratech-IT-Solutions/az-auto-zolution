@@ -37,70 +37,130 @@
 
 
   <style>
-    @media print {
-    body * {
-      visibility: hidden !important;
-    }
-
-    #invoice-print,
-    #invoice-print * {
-      visibility: visible !important;
-    }
-
-    #invoice-print {
-      position: absolute;
-      top: 0;
-      left: 26%;
-      transform: translateX(-50%);
-      width: 100vw;
-      height: 100vh;
-      margin: 0;
-      padding: 0;
-      background: white !important;
-      box-sizing: border-box;
-      overflow: hidden;
-    }
-
-    .no-print,
-    .no-print * {
-      display: none !important;
-    }
-
+    /* A4 portrait (screen preview + print). Design colors/layout unchanged; only sizing. */
     @page {
+      size: A4 portrait;
       margin: 0;
-      size: A4;
     }
 
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: visible;
+    @media screen {
+      #invoice-print.invoice-main {
+        width: 210mm;
+        max-width: 100%;
+        min-height: 297mm;
+        margin: 0 auto 2rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      }
     }
 
-    .invoice-header-bar,
-    .stripe-bar .stripe,
-    .details-table .label,
-    .invoice-table th,
-    .invoice-table tfoot tr td,
-    .labor-material-table th,
-    .labor-material-table tfoot td,
-    .job-table th,
-    .job-table tfoot td {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+
+      .content,
+      .container {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        border-radius: 0 !important;
+      }
+
+      #invoice-print,
+      #invoice-print * {
+        visibility: visible !important;
+      }
+
+      #invoice-print {
+        position: static !important;
+        width: 210mm;
+        max-width: none;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 0;
+        border: none;
+        box-shadow: none !important;
+        background: white !important;
+        box-sizing: border-box;
+        overflow: visible;
+        transform: none !important;
+      }
+
+      .no-print,
+      .no-print * {
+        display: none !important;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 210mm;
+        height: auto;
+        overflow: visible;
+      }
+
+      .invoice-header-bar,
+      .stripe-bar .stripe,
+      .details-table .label,
+      .invoice-table th,
+      .invoice-table tfoot tr td,
+      .labor-material-table th,
+      .labor-material-table tfoot td,
+      .job-table th,
+      .job-table tfoot td {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .invoice-header-bar,
+      .stripe-bar,
+      .company-info,
+      .details-section,
+      .processor-meta,
+      .invoice-print-footer {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      table {
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+
+      thead,
+      tfoot,
+      tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tfoot {
+        display: table-footer-group;
+      }
+
+      .labor-material-table,
+      .job-table,
+      .invoice-print-footer {
+        break-before: auto;
+        page-break-before: auto;
+      }
     }
 
     .invoice-main {
-    border: 1px solid #eee;
-    background: #fff;
-    max-width: 900px;
-    margin: 0 auto;
-    font-size: 15px;
-    overflow: hidden;
+      border: 1px solid #eee;
+      background: #fff;
+      margin: 0 auto;
+      font-size: 15px;
+      overflow: visible;
+      box-sizing: border-box;
     }
 
     .invoice-header-bar {
@@ -216,8 +276,7 @@
     /* Tables */
     .invoice-table,
     .labor-material-table,
-    .job-table,
-    .totals-table {
+    .job-table {
     width: 95%;
     margin: 20px auto 0;
     border-collapse: collapse;
@@ -263,23 +322,24 @@
     font-weight: bold;
     }
 
-    .totals-table td {
-    padding: 4px 8px;
-    font-size: 0.8rem;
+    .invoice-print-footer {
+      margin-top: 2rem;
+      padding-bottom: 0.75rem;
     }
 
-    .totals-table td:first-child {
-    text-align: left;
-    }
-
-    .totals-table td:last-child {
-    text-align: right;
+    .invoice-print-footer .customer-print-name {
+      font-weight: bold;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
     }
 
     .signature {
-    text-align: center;
-    margin-top: 10px;
-    font-weight: bold;
+      text-align: center;
+      margin-top: 0.5rem;
+      font-weight: bold;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 0.95rem;
     }
   </style>
 
@@ -374,8 +434,6 @@
       </table>
     </div>
 
-    @include('partials.invoice-processor-meta', ['invoice' => $invoice])
-
     {{-- ITEMS --}}
     <table class="invoice-table">
       <thead>
@@ -440,10 +498,8 @@
     </table>
 
 
-    {{-- Job Table and totals --}}
+    {{-- Totals --}}
     <table class="job-table">
-      <!-- existing item/job rows here -->
-
       <tr>
       <td></td>
       <td></td>
@@ -519,17 +575,22 @@
     </table>
 
 
-    {{-- Client’s name centered --}}
-    <div class="text-center mt-4">
-      <strong>{{ strtoupper($invoice->resolvedCustomerName()) }}</strong>
-    </div>
-    <div class="signature">CUSTOMER NAME & SIGNATURE</div>
+    {{-- Footer: customer line + signature (A4-centered block) --}}
+    <footer class="invoice-print-footer text-center">
+      <div class="customer-print-name">{{ strtoupper($invoice->resolvedCustomerName()) }}</div>
+      <div class="signature">CUSTOMER NAME & SIGNATURE</div>
+    </footer>
     </div>
   </div>
 
   <script>
     function printInvoice() {
-    window.print();
+      const originalTitle = document.title;
+      document.title = ' ';
+      window.print();
+      setTimeout(function () {
+        document.title = originalTitle;
+      }, 500);
     }
   </script>
 @endsection

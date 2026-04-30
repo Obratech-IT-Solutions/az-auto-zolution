@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Invoice;
 use App\Models\Client;
-use App\Models\Vehicle;
 use App\Models\Inventory;
+use App\Models\Invoice;
 use App\Models\Technician;
+use App\Models\Vehicle;
 use App\Services\ClientVehicleResolver;
 use App\Support\CashierListLimits;
-use Illuminate\Pagination\LengthAwarePaginator;
+use App\Support\InvoiceStaffStamp;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -62,18 +62,20 @@ class InvoiceController extends Controller
         $technicians = Technician::all();
         $search = $request->input('search');
 
-        $history = Invoice::with(['client', 'vehicle'])
+        $history = Invoice::with(['client', 'vehicle', 'lastProcessedByUser'])
             ->where('source_type', 'invoicing')
             ->latest('created_at')
             ->limit(CashierListLimits::SIDEBAR_INVOICE_HISTORY)
             ->get();
 
-        $recentAll = Invoice::with(['client', 'vehicle'])
+        $recentAll = Invoice::with(['client', 'vehicle', 'lastProcessedByUser'])
             ->where('source_type', 'invoicing')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->whereHas('client', fn($q) => $q->where('name', 'like', "%$search%"))
-                        ->orWhereHas('vehicle', fn($q) => $q->where('plate_number', 'like', "%$search%"))
+                    $q->whereHas('client', fn ($q) => $q->where('name', 'like', "%$search%"))
+                        ->orWhereHas('vehicle', fn ($q) => $q->where('plate_number', 'like', "%$search%"))
+                        ->orWhereHas('lastProcessedByUser', fn ($q) => $q->where('name', 'like', "%$search%")
+                            ->orWhere('email', 'like', "%$search%"))
                         ->orWhere('customer_name', 'like', "%$search%")
                         ->orWhere('vehicle_name', 'like', "%$search%")
                         ->orWhere('invoice_no', 'like', "%$search%");
@@ -82,7 +84,6 @@ class InvoiceController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->appends(['search' => $search]);
-
 
         return view('cashier.invoice', compact('clients', 'vehicles', 'partsPrefill', 'technicians', 'history', 'recentAll', 'search'));
     }
@@ -142,8 +143,8 @@ class InvoiceController extends Controller
         }
 
         DB::transaction(function () use ($request, $clientId, $vehicleId, $manualCustomer, $date) {
-            $invoice = new Invoice();
-            $invoice->forceFill([
+            $invoice = new Invoice;
+            $invoice->forceFill(array_merge([
                 'client_id' => $clientId,
                 'vehicle_id' => $vehicleId,
                 'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
@@ -167,7 +168,7 @@ class InvoiceController extends Controller
                 'number' => $request->number,
                 'address' => $request->address,
                 'created_at' => $date,
-            ])->save();
+            ], InvoiceStaffStamp::attributePairForCreate()))->save();
 
             if ($request->has('items')) {
                 foreach ($request->items as $item) {
@@ -216,7 +217,6 @@ class InvoiceController extends Controller
         return redirect()->route('cashier.invoice.index')->with('success', 'Invoice created!');
     }
 
-
     public function edit($id)
     {
         $invoice = Invoice::with(['items', 'jobs', 'client', 'vehicle'])->findOrFail($id);
@@ -229,17 +229,16 @@ class InvoiceController extends Controller
         $partsPrefill = Inventory::partPickerPrefillByIds($invoice->items->pluck('part_id'));
         $technicians = Technician::all();
 
-        $history = Invoice::with(['client', 'vehicle'])
+        $history = Invoice::with(['client', 'vehicle', 'lastProcessedByUser'])
             ->where('source_type', 'invoicing')
             ->latest('created_at')
             ->limit(CashierListLimits::SIDEBAR_INVOICE_HISTORY)
             ->get();
 
-        $recentAll = Invoice::with(['client', 'vehicle'])
+        $recentAll = Invoice::with(['client', 'vehicle', 'lastProcessedByUser'])
             ->where('source_type', 'invoicing')
             ->orderBy('created_at', 'desc')
             ->paginate(10); // ✅ Now returns a paginator object compatible with ->links()
-
 
         return view('cashier.invoice', compact('invoice', 'clients', 'vehicles', 'partsPrefill', 'technicians', 'history', 'recentAll'));
     }
@@ -249,33 +248,16 @@ class InvoiceController extends Controller
         $invoice = Invoice::with('items')->findOrFail($id);
         $prevStatus = $invoice->status;
 
-        // #region agent log
-        file_put_contents(base_path('.cursor/debug-c4fe64.log'), json_encode([
-            'sessionId' => 'c4fe64',
-            'location' => 'InvoiceController.php:update',
-            'message' => 'update entry',
-            'data' => [
-                'hypothesisId' => 'H_server',
-                'id' => (int) $id,
-                'has_status' => $request->has('status'),
-                'status' => $request->input('status'),
-                'has_items' => $request->has('items'),
-                'items_is_array' => is_array($request->input('items')),
-            ],
-            'timestamp' => (int) round(microtime(true) * 1000),
-        ])."\n", FILE_APPEND);
-        // #endregion
-
         // If this is a quick "mark as paid" or service_status update (not full edit)
-        if ($request->has('status') && $request->method() == 'PUT' && !$request->has('items')) {
+        if ($request->has('status') && $request->method() == 'PUT' && ! $request->has('items')) {
             DB::transaction(function () use ($invoice, $request, $prevStatus) {
                 $serviceStatus = ($request->status === 'paid')
                     ? 'done'
                     : ($request->service_status ?? $invoice->service_status);
-                $invoice->update([
+                $invoice->update(array_merge([
                     'status' => $request->status,
                     'service_status' => $serviceStatus,
-                ]);
+                ], InvoiceStaffStamp::attributePairForUpdate()));
 
                 if ($prevStatus !== 'paid' && $request->status === 'paid') {
                     $invoice->load('items');
@@ -313,7 +295,7 @@ class InvoiceController extends Controller
             'cashless_tender_amount' => 'nullable|numeric|min:0',
             'status' => 'required|in:unpaid,paid,cancelled,voided',
             'service_status' => 'required|in:pending,in_progress,done',
-            'invoice_no' => 'required|string|unique:invoices,invoice_no,' . $invoice->id,
+            'invoice_no' => 'required|string|unique:invoices,invoice_no,'.$invoice->id,
 
             'created_date' => 'nullable|date',
         ]);
@@ -336,7 +318,7 @@ class InvoiceController extends Controller
             $nextService = ($nextStatus === 'paid')
                 ? 'done'
                 : ($request->service_status ?? 'pending');
-            $invoice->update([
+            $invoice->update(array_merge([
                 'client_id' => $clientId,
                 'vehicle_id' => $vehicleId,
                 'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
@@ -357,7 +339,7 @@ class InvoiceController extends Controller
                 'cash_change_amount' => $request->filled('cash_change_amount') ? $request->cash_change_amount : null,
                 'cashless_tender_amount' => $request->filled('cashless_tender_amount') ? $request->cashless_tender_amount : null,
                 'invoice_no' => $request->invoice_no,
-            ]);
+            ], InvoiceStaffStamp::attributePairForUpdate()));
 
             $invoice->items()->delete();
             if ($request->has('items')) {
@@ -387,7 +369,7 @@ class InvoiceController extends Controller
             $invoice->jobs()->delete();
             if ($request->has('jobs')) {
                 foreach ($request->jobs as $job) {
-                    $techId = !empty($job['technician_id']) ? $job['technician_id'] : null;
+                    $techId = ! empty($job['technician_id']) ? $job['technician_id'] : null;
                     $invoice->jobs()->create([
                         'job_description' => $job['job_description'] ?? '',
                         'technician_id' => $techId,
@@ -428,7 +410,9 @@ class InvoiceController extends Controller
             'client',
             'vehicle',
             'items.part',
-            'jobs.technician'
+            'jobs.technician',
+            'createdByUser',
+            'lastProcessedByUser',
         ])->findOrFail($id);
 
         return view('cashier.invoice-view', compact('invoice'));
@@ -440,7 +424,9 @@ class InvoiceController extends Controller
             'client',
             'vehicle',
             'items.part',
-            'jobs.technician'
+            'jobs.technician',
+            'createdByUser',
+            'lastProcessedByUser',
         ])->findOrFail($id);
 
         return view('cashier.invoice-view', compact('invoice'));
@@ -452,7 +438,7 @@ class InvoiceController extends Controller
         $query = Client::query()->select(['id', 'name', 'phone', 'address', 'email']);
 
         if ($search !== '') {
-            $like = '%' . addcslashes($search, '%_\\') . '%';
+            $like = '%'.addcslashes($search, '%_\\').'%';
             $query->where(function ($w) use ($like) {
                 $w->where('name', 'like', $like)
                     ->orWhere('phone', 'like', $like)
@@ -485,7 +471,7 @@ class InvoiceController extends Controller
         $clientId = $request->get('client_id');
 
         return Vehicle::where('plate_number', 'like', "%$search%")
-            ->when($clientId, fn($q) => $q->where('client_id', $clientId))
+            ->when($clientId, fn ($q) => $q->where('client_id', $clientId))
             ->select('id', 'plate_number', 'model', 'year', 'color', 'odometer')
             ->limit(20)
             ->get();
@@ -501,12 +487,14 @@ class InvoiceController extends Controller
     {
         $search = $request->input('search');
 
-        $results = Invoice::with(['client', 'vehicle'])
+        $results = Invoice::with(['client', 'vehicle', 'lastProcessedByUser'])
             ->where('source_type', 'invoicing')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->whereHas('client', fn($q) => $q->where('name', 'like', "%$search%"))
-                        ->orWhereHas('vehicle', fn($q) => $q->where('plate_number', 'like', "%$search%"))
+                    $q->whereHas('client', fn ($q) => $q->where('name', 'like', "%$search%"))
+                        ->orWhereHas('vehicle', fn ($q) => $q->where('plate_number', 'like', "%$search%"))
+                        ->orWhereHas('lastProcessedByUser', fn ($q) => $q->where('name', 'like', "%$search%")
+                            ->orWhere('email', 'like', "%$search%"))
                         ->orWhere('customer_name', 'like', "%$search%")
                         ->orWhere('vehicle_name', 'like', "%$search%")
                         ->orWhere('invoice_no', 'like', "%$search%");
@@ -517,8 +505,4 @@ class InvoiceController extends Controller
 
         return view('cashier.partials.invoice-results', ['results' => $results])->render();
     }
-
-
-
-
 }

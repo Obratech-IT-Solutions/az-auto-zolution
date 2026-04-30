@@ -30,9 +30,7 @@
     }
 </style>
 <div class="container">
-    <h2 class="fw-bold mt-2 mb-4">Expenses</h2>
-
-    <div class="d-flex flex-wrap align-items-end gap-2 gap-md-3 mb-3">
+    <div class="d-flex flex-wrap align-items-end gap-2 gap-md-3 mb-3 mt-2">
         <button class="btn btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
             <i class="fas fa-plus"></i> Add Expense
         </button>

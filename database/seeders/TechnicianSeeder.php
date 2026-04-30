@@ -2,32 +2,34 @@
 
 namespace Database\Seeders;
 
+use App\Models\Technician;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class TechnicianSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Technicians have no login; name + position only.
+     */
+    public function run(): void
     {
-        DB::table('technicians')->insert([
+        $position = 'Technician';
+
+        foreach (
             [
-                'name'       => 'man',
-                'position'   => 'mechanic',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name'       => 'icen',
-                'position'   => 'mechanic',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name'       => 'drei',
-                'position'   => 'cashier',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        ]);
+                'Greg',
+                'Dexter',
+                'Jeric',
+                'Marvin',
+                'Lucas',
+                'Rowel',
+                'Jake',
+                'Daryll',
+            ] as $name
+        ) {
+            Technician::updateOrCreate(
+                ['name' => $name],
+                ['position' => $position]
+            );
+        }
     }
 }

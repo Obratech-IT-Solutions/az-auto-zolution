@@ -314,10 +314,6 @@
     }
   </style>
   <div class="container mt-4">
-    <h2 class="mb-4 text-center">{{ isset($invoice) ? 'Edit Quotation' : 'Create Quotation' }}</h2>
-
-
-
     <form
     action="{{ isset($invoice) ? route('cashier.quotation.update', $invoice->id) : route('cashier.quotation.store') }}"
     method="POST" id="quoteForm" autocomplete="off">
@@ -601,12 +597,38 @@
       $(this).data('manual', true);
     });
 
-    $('#client_id').select2({
+    var $qClientSel = $('#client_id');
+    function qClientAjaxRememberTerm(term) {
+      var t = String(term || '').trim();
+      if (t) $qClientSel.data('clientAjaxSearchTerm', t);
+    }
+    function qClientSearchFld() {
+      try {
+        var s2 = $qClientSel.data('select2');
+        if (s2 && s2.dropdown && s2.dropdown.$dropdown && s2.dropdown.$dropdown.length) {
+          var $f = s2.dropdown.$dropdown.find('.select2-search__field');
+          if ($f.length) return $f;
+        }
+      } catch (e) {}
+      return $(document.body).find('.select2-container.select2-container--open .select2-search__field').first();
+    }
+    function qClientSearchWhenReady(doFn) {
+      var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      function tick() {
+        var $fld = qClientSearchFld();
+        if ($fld.length) return doFn($fld);
+        var elapsed = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
+        if (elapsed < 400) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(function () { requestAnimationFrame(tick); });
+    }
+    $qClientSel.select2({
       ajax: {
       url: '{{ route("cashier.quotation.ajax.clients") }}',
       dataType: 'json',
       delay: 250,
       data: function (params) {
+        qClientAjaxRememberTerm(params.term);
         return {
         q: params.term || '',
         page: params.page || 1
@@ -617,7 +639,7 @@
         return {
         results: data.results,
         pagination: {
-          more: data.pagination.more
+        more: data.pagination.more
         }
         };
       },
@@ -626,6 +648,19 @@
       minimumInputLength: 0,
       placeholder: '-- search client --',
       allowClear: true
+    }).on('select2:closing', function () {
+      var $fld = qClientSearchFld();
+      if (!$fld.length) return;
+      var v = String($fld.val() || '').trim();
+      if (v) $qClientSel.data('clientAjaxSearchTerm', v);
+    }).on('select2:open', function () {
+      var term = $qClientSel.data('clientAjaxSearchTerm');
+      qClientSearchWhenReady(function ($fld) {
+        if (term) $fld.val(term);
+        $fld.trigger('input');
+      });
+    }).on('select2:clear', function () {
+      $qClientSel.removeData('clientAjaxSearchTerm');
     }).on('select2:select', function (e) {
       const data = e.params.data;
       // Fill the fields only if user didn't type anything manually
@@ -641,6 +676,7 @@
     $('#vehicle_id').select2({
       placeholder: '-- search vehicle --',
       allowClear: true,
+      closeOnSelect: false,
       ajax: {
       url: '{{ route("cashier.ajax.vehicles") }}',
       dataType: 'json',
@@ -837,7 +873,27 @@
           return $root;
         }
       })
+        .on('select2:closing', function () {
+          var $fld = row.find('.inv-part-dd-wrap').find('.select2-container.select2-container--open .select2-search__field');
+          if ($fld.length) {
+            $partSelect.data('invPartAjaxSearchTerm', String($fld.val() || '').trim());
+          }
+        })
+        .on('select2:open', function () {
+          var term = $partSelect.data('invPartAjaxSearchTerm');
+          if (!term) return;
+          requestAnimationFrame(function () {
+            var $fld = row.find('.inv-part-dd-wrap').find('.select2-container.select2-container--open .select2-search__field');
+            if (!$fld.length) return;
+            $fld.val(term);
+            $fld.trigger('input');
+          });
+        })
         .on('select2:select', e => {
+          var $fldSel = row.find('.inv-part-dd-wrap').find('.select2-container.select2-container--open .select2-search__field');
+          if ($fldSel.length) {
+            $partSelect.data('invPartAjaxSearchTerm', String($fldSel.val() || '').trim());
+          }
           const d = e.params.data;
           row.find('[name$="[original_price]"]').val(Number(d.price || 0).toFixed(2));
           row.find('[name$="[acquisition_price]"]').val(Number(d.acquisition || 0).toFixed(2));
@@ -845,42 +901,11 @@
           recalc();
         })
         .on('select2:clear', () => {
+          $partSelect.removeData('invPartAjaxSearchTerm');
           row.find('[name$="[original_price]"]').val('');
           row.find('[name$="[acquisition_price]"]').val('');
           recalc();
-        })
-        // #region agent log
-        .on('select2:open', function () {
-          requestAnimationFrame(function () {
-            var items = document.getElementById('quote-items-card');
-            var jobs = document.getElementById('quote-jobs-card');
-            var totals = document.getElementById('quote-totals-card');
-            var dd = row.find('.inv-part-dd-wrap .select2-dropdown').get(0);
-            var cs = function (el) { return el ? window.getComputedStyle(el) : null; };
-            fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' },
-              body: JSON.stringify({
-                sessionId: 'c4fe64',
-                location: 'quotation.blade.php:select2:open',
-                message: 'part dropdown stacking snapshot',
-                hypothesisId: 'H1-sibling-stacking',
-                runId: 'post-fix-verify',
-                data: {
-                  ddZ: dd && cs(dd).zIndex,
-                  ddPos: dd && cs(dd).position,
-                  itemsZ: items && cs(items).zIndex,
-                  itemsPos: items && cs(items).position,
-                  itemsIsolation: items && cs(items).isolation,
-                  jobsZ: jobs && cs(jobs).zIndex,
-                  totalsZ: totals && cs(totals).zIndex
-                },
-                timestamp: Date.now()
-              })
-            }).catch(function () {});
-          });
         });
-        // #endregion
 
       if (partId) {
         const pre = window.quotationPartsPrefill && window.quotationPartsPrefill[String(partId)];

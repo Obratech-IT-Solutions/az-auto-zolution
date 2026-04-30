@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,11 @@ class Inventory extends Model
         'selling',
     ];
 
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(InventoryStockMovement::class, 'inventory_id')->orderByDesc('created_at');
+    }
+
     /**
      * Deduct quantity from inventory.
      * If not enough stock, deducts to zero.
@@ -29,29 +36,116 @@ class Inventory extends Model
         $amount = max(0, (int) $amount); // avoid negative deduction
         $this->quantity = max(0, $this->quantity - $amount);
         $this->save();
+
         return true;
     }
 
     /**
+     * Subquery: total units invoiced per inventory row (only inventory-linked lines on paid invoices).
+     */
+    public static function invoiceSoldQuantitySubquery(): QueryBuilder
+    {
+        return DB::table('invoice_items')
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->where('invoices.status', 'paid')
+            ->whereNotNull('invoice_items.part_id')
+            ->select('invoice_items.part_id', DB::raw('SUM(invoice_items.quantity) as sold_qty'))
+            ->groupBy('invoice_items.part_id');
+    }
+
+    /**
+     * Normalize `sort` query for inventory index.
+     * Omitting `sort` defaults to most sold (`sold_desc`). Use `sort=newest` or `recent` for newest-first.
+     */
+    public static function normalizeIndexSort(?string $sort): string
+    {
+        $sort = $sort === null ? '' : trim($sort);
+
+        return match ($sort) {
+            'oldest' => 'oldest',
+            'sold', 'sold_desc', 'most_sold' => 'sold_desc',
+            'sold_asc', 'least_sold' => 'sold_asc',
+            'price_asc', 'cheapest' => 'price_asc',
+            'price_desc', 'expensive' => 'price_desc',
+            'newest', 'recent' => 'newest',
+            '' => 'sold_desc',
+            default => 'sold_desc',
+        };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function indexSortLabels(): array
+    {
+        return [
+            'newest' => 'Newest',
+            'oldest' => 'Oldest',
+            'sold_desc' => 'Most sold',
+            'sold_asc' => 'Least sold',
+            'price_asc' => 'Cheapest (selling ₱)',
+            'price_desc' => 'Most expensive (selling ₱)',
+        ];
+    }
+
+    /**
      * Paginated list for cashier/admin inventory screens (bounded page size, selective columns).
+     * Adds sold_qty from paid invoice line items. Sort via {@see normalizeIndexSort()}.
      */
     public static function paginateForIndex(Request $request, int $perPage = 25): LengthAwarePaginator
     {
         $q = trim((string) $request->get('q', ''));
+        $sort = static::normalizeIndexSort($request->get('sort'));
+
+        $soldSub = static::invoiceSoldQuantitySubquery();
+
         $query = static::query()
+            ->from('inventories')
+            ->leftJoinSub($soldSub, 'inv_sold', function ($join): void {
+                $join->on('inv_sold.part_id', '=', 'inventories.id');
+            })
             ->select([
-                'id',
-                'item_name',
-                'quantity',
-                'part_number',
-                'acquisition_price',
-                'supplier',
-                'selling',
-                'created_at',
+                'inventories.id',
+                'inventories.item_name',
+                'inventories.quantity',
+                'inventories.part_number',
+                'inventories.acquisition_price',
+                'inventories.supplier',
+                'inventories.selling',
+                'inventories.created_at',
             ])
-            ->orderByDesc('created_at');
+            ->addSelect(DB::raw('CAST(COALESCE(inv_sold.sold_qty, 0) AS UNSIGNED) as sold_qty'));
 
         static::applySearchFilter($query, $q);
+
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('inventories.created_at')->orderBy('inventories.id');
+                break;
+            case 'sold_desc':
+                $query->orderByDesc('sold_qty')
+                    ->orderBy('inventories.item_name')
+                    ->orderBy('inventories.id');
+                break;
+            case 'sold_asc':
+                $query->orderBy('sold_qty')
+                    ->orderBy('inventories.item_name')
+                    ->orderBy('inventories.id');
+                break;
+            case 'price_asc':
+                $query->orderBy('inventories.selling')
+                    ->orderBy('inventories.item_name')
+                    ->orderBy('inventories.id');
+                break;
+            case 'price_desc':
+                $query->orderByDesc('inventories.selling')
+                    ->orderBy('inventories.item_name')
+                    ->orderBy('inventories.id');
+                break;
+            default:
+                $query->orderByDesc('inventories.created_at')->orderBy('inventories.id');
+                break;
+        }
 
         return $query->paginate($perPage)->withQueryString();
     }
@@ -197,16 +291,16 @@ class Inventory extends Model
             foreach ($tokens as $rawTok) {
                 $outer->where(function (Builder $inner) use ($rawTok, $t) {
                     $needle = mb_strtolower($rawTok, 'UTF-8');
-                    $pattern = '%' . addcslashes($needle, '%_\\') . '%';
+                    $pattern = '%'.addcslashes($needle, '%_\\').'%';
 
                     $inner->where(function (Builder $w) use ($pattern, $t, $rawTok) {
-                        $w->whereRaw('LOWER(TRIM(`' . $t . '`.`item_name`)) LIKE ?', [$pattern])
+                        $w->whereRaw('LOWER(TRIM(`'.$t.'`.`item_name`)) LIKE ?', [$pattern])
                             ->orWhereRaw(
-                                'LOWER(TRIM(CAST(`' . $t . '`.`part_number` AS CHAR))) LIKE ?',
+                                'LOWER(TRIM(CAST(`'.$t.'`.`part_number` AS CHAR))) LIKE ?',
                                 [$pattern]
                             )
                             ->orWhereRaw(
-                                'LOWER(TRIM(COALESCE(`' . $t . '`.`supplier`, \'\'))) LIKE ?',
+                                'LOWER(TRIM(COALESCE(`'.$t.'`.`supplier`, \'\'))) LIKE ?',
                                 [$pattern]
                             );
 
@@ -220,10 +314,10 @@ class Inventory extends Model
                                 $id = (int) $rawTok;
                             }
                             if ($id > 0) {
-                                $w->orWhere($t . '.id', $id);
+                                $w->orWhere($t.'.id', $id);
                             }
                             if ($rawTok === '0') {
-                                $w->orWhere($t . '.id', 0);
+                                $w->orWhere($t.'.id', 0);
                             }
                         }
                     });

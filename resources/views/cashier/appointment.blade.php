@@ -124,8 +124,6 @@
   </style>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
   <div class="container mt-4">
-    <h2 class="mb-4 text-center">{{ isset($invoice) ? 'Edit Appointment' : 'Create Appointment' }}</h2>
-
     @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
     {{ session('success') }}
@@ -396,14 +394,43 @@
 
   <script>
 
-    $('#client_id').select2({
+    var $apptClientSel = $('#client_id');
+    function apptClientAjaxRememberTerm(term) {
+      var t = String(term || '').trim();
+      if (t) $apptClientSel.data('clientAjaxSearchTerm', t);
+    }
+    function apptClientSearchFld() {
+      try {
+        var s2 = $apptClientSel.data('select2');
+        if (s2 && s2.dropdown && s2.dropdown.$dropdown && s2.dropdown.$dropdown.length) {
+          var $f = s2.dropdown.$dropdown.find('.select2-search__field');
+          if ($f.length) return $f;
+        }
+      } catch (e) {}
+      return $(document.body).find('.select2-container.select2-container--open .select2-search__field').first();
+    }
+    function apptClientSearchWhenReady(doFn) {
+      var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      function tick() {
+        var $fld = apptClientSearchFld();
+        if ($fld.length) return doFn($fld);
+        var elapsed = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
+        if (elapsed < 400) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(function () { requestAnimationFrame(tick); });
+    }
+    $apptClientSel.select2({
     placeholder: 'Select client',
     allowClear: true,
+    minimumInputLength: 0,
     ajax: {
       url: '{{ route("cashier.ajax.clients") }}',
       dataType: 'json',
       delay: 250,
-      data: params => ({ q: params.term || '' }),
+      data: params => {
+        apptClientAjaxRememberTerm(params.term);
+        return { q: params.term || '' };
+      },
       processResults: data => ({
       results: data.map(c => ({
         id: c.id,
@@ -414,17 +441,31 @@
       }))
       })
     }
+    }).on('select2:closing', function () {
+      var $fld = apptClientSearchFld();
+      if (!$fld.length) return;
+      var v = String($fld.val() || '').trim();
+      if (v) $apptClientSel.data('clientAjaxSearchTerm', v);
+    }).on('select2:open', function () {
+      var term = $apptClientSel.data('clientAjaxSearchTerm');
+      apptClientSearchWhenReady(function ($fld) {
+        if (term) $fld.val(term);
+        $fld.trigger('input');
+      });
+    }).on('select2:clear', function () {
+      $apptClientSel.removeData('clientAjaxSearchTerm');
     }).on('select2:select', function (e) {
-    const c = e.params.data;
-    $('#phone').val(c.number || '');
-    $('#email').val(c.email || '');
-    $('#address').val(c.address || '');
-    $('#vehicle_id').val(null).trigger('change');
+      const c = e.params.data;
+      $('#phone').val(c.number || '');
+      $('#email').val(c.email || '');
+      $('#address').val(c.address || '');
+      $('#vehicle_id').val(null).trigger('change');
     });
 
     $('#vehicle_id').select2({
     placeholder: 'Select vehicle',
     allowClear: true,
+    closeOnSelect: false,
     ajax: {
       url: '{{ route("cashier.ajax.vehicles") }}',
       dataType: 'json',

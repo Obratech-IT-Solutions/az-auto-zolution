@@ -172,6 +172,8 @@
       </table>
     </div>
 
+    @include('partials.invoice-processor-meta', ['invoice' => $invoice])
+
     {{-- ITEMS --}}
     <table class="invoice-table">
       <thead>

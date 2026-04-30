@@ -5,7 +5,8 @@ use Carbon\Carbon;
 $byDate = collect($allItems)->groupBy('date');
 $blocks = [];
 $grand = [
-    'sales'    => 0,
+    'salesNet' => 0,
+    'salesGross' => 0,
     'cost'     => 0,
     'cash'     => 0,
     'nonCash'  => 0,
@@ -17,20 +18,30 @@ foreach ($byDate->keys()->sort()->values() as $date) {
     $items = $byDate[$date];
     $invoiceGroups = collect($items)->groupBy('invoice_id');
 
-    $daySales    = $items->sum('line_total');
+    $dayGrossLines = $items->sum('line_total');
     $dayCost     = $items->sum(fn($i) => ($i['acquisition_price'] ?? 0) * ($i['quantity'] ?? 1));
     $dayInvs     = $invoices->where('created_at', '>=', $date . ' 00:00:00')
                             ->where('created_at', '<=', $date . ' 23:59:59');
-    $dayInvDisc  = $dayInvs->sum('total_discount');
-    $dayItemDisc = $items->sum('discount_value');
-    $dayDiscount = $dayInvDisc + $dayItemDisc;
-    $dayCash     = $dayInvs->where('payment_type','cash')
-                    ->sum(fn($inv) => $inv->items->sum('line_total') + $inv->jobs->sum('total'));
-    $dayNonCash  = $daySales - $dayCash;
-    $dayProfit   = $daySales - $dayCost - $dayDiscount;
+    $daySales    = (float) $dayInvs->sum('grand_total');
+    $dayInvDisc  = (float) $dayInvs->sum('total_discount');
+    $dayLineDisc = $dayInvs->sum(fn ($inv) => $inv->items->sum(fn ($it) => (float) $it->quantity * (float) $it->discount_value));
+    $dayDiscount = $dayInvDisc + $dayLineDisc;
+    $dayCash     = 0.0;
+    $dayNonCash  = 0.0;
+    foreach ($dayInvs as $inv) {
+        $bill = (float) ($inv->grand_total ?? 0);
+        if ($bill <= 0) {
+            $bill = (float) $inv->items->sum('line_total') + (float) $inv->jobs->sum('total');
+        }
+        $a  = \App\Support\InvoicePaymentAllocation::cashAndCashlessForInvoice($inv, $bill);
+        $dayCash    += $a['cash'];
+        $dayNonCash += $a['cashless'];
+    }
+    $dayProfit   = $daySales - $dayCost;
 
     // Update grand totals
-    $grand['sales']    += $daySales;
+    $grand['salesNet'] += $daySales;
+    $grand['salesGross'] += $dayGrossLines;
     $grand['cost']     += $dayCost;
     $grand['cash']     += $dayCash;
     $grand['nonCash']  += $dayNonCash;
@@ -67,9 +78,12 @@ foreach ($byDate->keys()->sort()->values() as $date) {
         // Invoice-level discount
         $invObj = $invoices->where('id', $invId)->first();
         $invDisc = $invObj ? ($invObj->total_discount ?? 0) : 0;
-        $clientTotal = $rowsGroup->sum('line_total') - $invDisc;
+        $linesSum = $rowsGroup->sum('line_total');
+        $clientTotal = $invObj && (float) ($invObj->grand_total ?? 0) > 0
+            ? (float) $invObj->grand_total
+            : ($linesSum - $invDisc);
         $payType = $invObj
-            ? ($invObj->payment_type === 'cash' ? 'Cash' : 'Non-Cash')
+            ? \App\Support\InvoicePaymentAllocation::paymentBreakdownLabel($invObj)
             : '';
 
         // Invoice summary rows
@@ -102,7 +116,7 @@ foreach ($byDate->keys()->sort()->values() as $date) {
 
     // Daily breakdown
     $rows[] = [
-        '<td colspan="5" class="text-end fw-bold">Total Sales:</td>',
+        '<td colspan="5" class="text-end fw-bold">Total sales (billed):</td>',
         '<td></td>',
         '<td class="text-primary text-end">₱' . number_format($daySales, 2) . '</td>',
         '<td></td>',
@@ -125,12 +139,14 @@ foreach ($byDate->keys()->sort()->values() as $date) {
         '<td class="text-end">₱' . number_format($dayNonCash, 2) . '</td>',
         '<td></td>',
     ];
-    $rows[] = [
-        '<td colspan="5" class="text-end fw-bold">Discount:</td>',
-        '<td></td>',
-        '<td class="text-end">₱' . number_format($dayDiscount, 2) . '</td>',
-        '<td></td>',
-    ];
+    if ($dayDiscount > 0.005) {
+        $rows[] = [
+            '<td colspan="5" class="text-end">Discounts (inv. + line, info):</td>',
+            '<td></td>',
+            '<td class="text-end">₱' . number_format($dayDiscount, 2) . '</td>',
+            '<td></td>',
+        ];
+    }
     $rows[] = [
         '<td colspan="5" class="text-end fw-bold">Total Profit:</td>',
         '<td></td>',
@@ -198,10 +214,18 @@ $totalCols = $numBlocks * 8 + ($numBlocks - 1);
         <tr><td colspan="{{ $totalCols }}"></td></tr>
         <tr>
             <td colspan="{{ $totalCols-1 }}" style="text-align:right;font-weight:bold;background:#bbb;color:#fff;">
-                Grand Total Sales:
+                Grand total sales (billed):
             </td>
             <td style="font-weight:bold;background:#bbb;color:#fff;">
-                ₱{{ number_format($grand['sales'], 2) }}
+                ₱{{ number_format($grand['salesNet'], 2) }}
+            </td>
+        </tr>
+        <tr>
+            <td colspan="{{ $totalCols-1 }}" style="text-align:right;font-weight:bold;background:#ddd;color:#333;">
+                Gross line total (before inv. discounts):
+            </td>
+            <td style="font-weight:bold;background:#ddd;color:#333;">
+                ₱{{ number_format($grand['salesGross'], 2) }}
             </td>
         </tr>
         <tr>
@@ -228,14 +252,16 @@ $totalCols = $numBlocks * 8 + ($numBlocks - 1);
                 ₱{{ number_format($grand['nonCash'], 2) }}
             </td>
         </tr>
+        @if(($grand['discount'] ?? 0) > 0.005)
         <tr>
             <td colspan="{{ $totalCols-1 }}" style="text-align:right;font-weight:bold;background:#bbb;color:#fff;">
-                Grand Total Discount:
+                Total discounts (reference):
             </td>
             <td style="font-weight:bold;background:#bbb;color:#fff;">
                 ₱{{ number_format($grand['discount'], 2) }}
             </td>
         </tr>
+        @endif
         <tr>
             <td colspan="{{ $totalCols-1 }}" style="text-align:right;font-weight:bold;background:#bbb;color:#fff;">
                 Grand Total Profit:

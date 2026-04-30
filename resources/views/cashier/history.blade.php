@@ -13,6 +13,9 @@
     .history-list-table td {
         vertical-align: middle;
     }
+    .history-list-table .hist-invoice {
+        white-space: nowrap;
+    }
     .history-list-table .hist-customer,
     .history-list-table .hist-vehicle {
         word-break: break-word;
@@ -27,8 +30,6 @@
     }
 </style>
 <div class="container mt-4">
-    <h2 class="mb-4 text-center">Invoice & Quotation History</h2>
-
     {{-- Search Bar --}}
     <form method="GET" action="{{ route('cashier.history') }}" class="mb-3">
         <div class="input-group">
@@ -63,16 +64,18 @@
             <h4 class="mt-4">{{ $date }}</h4>
             <table class="table table-striped table-bordered align-middle history-list-table mb-3">
                 <colgroup>
-                    <col style="width: 22%;">
+                    <col style="width: 11%;">
+                    <col style="width: 19%;">
+                    <col style="width: 11%;">
                     <col style="width: 12%;">
                     <col style="width: 13%;">
-                    <col style="width: 14%;">
+                    <col style="width: 11%;">
+                    <col style="width: 11%;">
                     <col style="width: 12%;">
-                    <col style="width: 12%;">
-                    <col style="width: 15%;">
                 </colgroup>
                 <thead class="table-light">
                     <tr>
+                        <th class="hist-invoice font-monospace">Invoice #</th>
                         <th class="hist-customer">Customer</th>
                         <th class="hist-vehicle">Vehicle</th>
                         <th class="hist-tag">Source Type</th>
@@ -85,6 +88,7 @@
                 <tbody>
                     @foreach($records as $h)
                         <tr>
+                            <td class="hist-invoice font-monospace">{{ $h->invoice_no ?? '—' }}</td>
                             <td class="hist-customer">{{ $h->resolvedCustomerName() }}</td>
                             <td class="hist-vehicle">{{ $h->vehicle->plate_number ?? $h->vehicle_name ?? '—' }}</td>
                             <td class="hist-tag">
@@ -92,7 +96,7 @@
                                     {{ ucfirst(str_replace('_', ' ', $h->source_type)) }}
                                 </span>
                             </td>
-                            <td class="hist-pay">{{ ucfirst(str_replace('_',' ', $h->payment_type)) }}</td>
+                            <td class="hist-pay">{{ $h->paymentTypeDisplay() }}</td>
                             <td class="hist-svc">{{ ucfirst(str_replace('_',' ', $h->service_status)) }}</td>
                             <td class="hist-tag">
                                 <span class="badge {{ $statusBadge[$h->status] ?? 'bg-secondary' }}">

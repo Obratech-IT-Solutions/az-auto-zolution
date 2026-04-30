@@ -374,6 +374,8 @@
       </table>
     </div>
 
+    @include('partials.invoice-processor-meta', ['invoice' => $invoice])
+
     {{-- ITEMS --}}
     <table class="invoice-table">
       <thead>
@@ -478,7 +480,7 @@
       <tr>
       <td colspan="2"></td>
       <td>Trans type</td>
-      <td>{{ ucfirst(str_replace('_', ' ', $invoice->payment_type ?? '—')) }}</td>
+      <td>{{ $invoice->paymentTypeDisplay() }}</td>
       </tr>
       <tr>
       <td colspan="2"></td>

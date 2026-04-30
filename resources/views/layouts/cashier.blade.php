@@ -5,7 +5,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{{ config('app.name', 'Auto Service Dashboard') }}</title>
+  <title>
+    @hasSection('title')
+    @yield('title') — {{ config('app.name') }}
+    @else
+    {{ config('app.name') }}
+    @endif
+  </title>
+  <link rel="icon" href="{{ asset('images/logo.png') }}" type="image/png">
 
   <!-- Icons & CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -38,6 +45,22 @@
       background: #1c1f26;
       border-top: 1px solid rgba(255,255,255,0.08);
     }
+    .sidebar-user-block {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-user-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f8f9fa;
+      line-height: 1.3;
+    }
+    .sidebar-user-role {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 2px;
+    }
     .sidebar .logo-container { text-align: center; padding: 25px 0 15px; }
     .sidebar .logo-container img {
       width:90px; height:90px; object-fit:cover;
@@ -52,6 +75,19 @@
     }
     .sidebar a i { margin-right:12px; font-size:18px; }
     .sidebar a:hover { background:#495057; color:#fff; }
+    .sidebar a.sidebar-nav-active {
+      background: rgba(74, 144, 226, 0.28);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: inset 4px 0 0 #4a90e2;
+    }
+    .sidebar a.sidebar-nav-active:hover {
+      background: rgba(74, 144, 226, 0.4);
+      color: #fff;
+    }
+    .sidebar a.sidebar-nav-active i {
+      color: #a8c9f0;
+    }
     .content {
       margin-left:260px; padding:40px 30px;
       background:#f1f4f9; min-height:100vh;
@@ -161,18 +197,19 @@
         <h4 class="mt-2">AZ Auto Zolutions</h4>
       </div>
       <nav class="sidebar-links" aria-label="Main navigation">
-        <a href="{{ route('cashier.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a href="{{ route('cashier.appointment.index') }}"><i class="fas fa-calendar-check"></i> Appointments</a>
-        <a href="{{ route('cashier.quotation.index') }}"><i class="fas fa-file-alt"></i> Quotation</a>
-        <a href="{{ route('cashier.service-order') }}"><i class="fas fa-tools"></i> Service Orders</a>
-        <a href="{{ route('cashier.invoice.index') }}"><i class="fas fa-file-invoice"></i> Invoicing</a>
-        <a href="{{ route('cashier.inventory.index') }}"><i class="fas fa-boxes"></i> Inventory</a>
-        <a href="{{ route('cashier.expenses.index') }}"><i class="fas fa-wallet"></i> Expenses</a>
-        <a href="{{ route('cashier.ar-cashdeposit.index') }}"><i class="fas fa-hand-holding-usd"></i> A/R & Cash Deposit</a>
-        <a href="{{ route('cashier.vehicles.index') }}"><i class="fas fa-users"></i> Clients & Vehicles</a>
-        <a href="{{ route('cashier.history') }}"><i class="fas fa-history"></i> History</a>
+        <a href="{{ route('cashier.dashboard') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.dashboard', 'cashier.home')]) @if(request()->routeIs('cashier.dashboard', 'cashier.home')) aria-current="page" @endif><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="{{ route('cashier.appointment.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.appointment.*')]) @if(request()->routeIs('cashier.appointment.*')) aria-current="page" @endif><i class="fas fa-calendar-check"></i> Appointments</a>
+        <a href="{{ route('cashier.quotation.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.quotation.*')]) @if(request()->routeIs('cashier.quotation.*')) aria-current="page" @endif><i class="fas fa-file-alt"></i> Quotation</a>
+        <a href="{{ route('cashier.service-order') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.serviceorder.*', 'cashier.service-order')]) @if(request()->routeIs('cashier.serviceorder.*', 'cashier.service-order')) aria-current="page" @endif><i class="fas fa-tools"></i> Service Orders</a>
+        <a href="{{ route('cashier.invoice.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.invoice.*', 'cashier.invoice-blank')]) @if(request()->routeIs('cashier.invoice.*', 'cashier.invoice-blank')) aria-current="page" @endif><i class="fas fa-file-invoice"></i> Invoicing</a>
+        <a href="{{ route('cashier.inventory.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.inventory.*')]) @if(request()->routeIs('cashier.inventory.*')) aria-current="page" @endif><i class="fas fa-boxes"></i> Inventory</a>
+        <a href="{{ route('cashier.expenses.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.expenses.*')]) @if(request()->routeIs('cashier.expenses.*')) aria-current="page" @endif><i class="fas fa-wallet"></i> Expenses</a>
+        <a href="{{ route('cashier.ar-cashdeposit.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.ar-cashdeposit.*')]) @if(request()->routeIs('cashier.ar-cashdeposit.*')) aria-current="page" @endif><i class="fas fa-hand-holding-usd"></i> A/R & Cash Deposit</a>
+        <a href="{{ route('cashier.vehicles.index') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.vehicles.*', 'cashier.clients.*')]) @if(request()->routeIs('cashier.vehicles.*', 'cashier.clients.*')) aria-current="page" @endif><i class="fas fa-users"></i> Clients & Vehicles</a>
+        <a href="{{ route('cashier.history') }}" @class(['sidebar-nav-active' => request()->routeIs('cashier.history', 'cashier.history.*')]) @if(request()->routeIs('cashier.history', 'cashier.history.*')) aria-current="page" @endif><i class="fas fa-history"></i> History</a>
       </nav>
       <div class="sidebar-footer">
+        @include('partials.sidebar-signed-in-user')
         <form method="POST" action="{{ route('logout') }}">
           @csrf
           <button type="submit" class="btn btn-danger w-100">
@@ -197,7 +234,8 @@
               style="color: {{ ($lowStockCount ?? 0) > 0 ? '#c30000' : '#adb5bd' }};">
               <i class="fas fa-bell"></i>
               @if(($lowStockCount ?? 0) > 0)
-                <span class="badge bg-danger">{{ $lowStockCount }}</span>
+                {{-- Badge = alerts in this list (capped preview); × / Clear all updates via JS — no phantom remainder count --}}
+                <span class="badge bg-danger">{{ $lowStockItems->count() }}</span>
               @endif
             </button>
             @if(($lowStockCount ?? 0) > 0)
@@ -275,13 +313,11 @@
       function updateLowStockBadge() {
         var btn = document.getElementById('notifBell');
         if (!btn) return;
-        var total = parseInt(btn.getAttribute('data-low-stock-total') || '0', 10);
-        var rendered = parseInt(btn.getAttribute('data-low-stock-rendered') || '0', 10);
-        var visible = document.querySelectorAll('.low-stock-item-row[data-low-stock-id]:not(.d-none)').length;
-        var n = visible + Math.max(0, total - rendered);
+        /** Ongoing = rows still showing (not dismissed with ×). No extra phantom count for SKUs beyond the dropdown preview. */
+        var n = document.querySelectorAll('.low-stock-item-row[data-low-stock-id]:not(.d-none)').length;
         var badge = btn.querySelector('.badge');
         if (badge) {
-          badge.textContent = n;
+          badge.textContent = String(n);
           badge.classList.toggle('d-none', n <= 0);
         }
         btn.style.color = n > 0 ? '#c30000' : '#adb5bd';

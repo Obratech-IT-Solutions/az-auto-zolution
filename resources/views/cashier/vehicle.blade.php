@@ -45,9 +45,6 @@
   </style>
 
   <div class="container">
-    <h2 class="mb-4 fw-bold text-primary"><i class="bi bi-person-vcard"></i> Clients & Vehicle Management</h2>
-
-
     {{-- Success toasts --}}
     <div id="client-success" class="alert alert-success d-none shadow-sm">
     <i class="bi bi-check-circle-fill me-2"></i> Client added!

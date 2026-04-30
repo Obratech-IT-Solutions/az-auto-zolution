@@ -5,12 +5,33 @@
 @section('content')
   @php
     $filteredUnpaid = $history->where('source_type', 'invoicing')
-    ->where('created_at', '>=', now()->subHours(48))
-    ->where('status', 'unpaid');
+      ->where('created_at', '>=', now()->subHours(48))
+      ->where('status', 'unpaid');
 
     $filteredPaid = $history->where('source_type', 'invoicing')
-    ->where('created_at', '>=', now()->subHours(48))
-    ->where('status', 'paid');
+      ->where('created_at', '>=', now()->subHours(48))
+      ->where('status', 'paid');
+
+    $groupedUnpaid = $filteredUnpaid->sortByDesc('created_at')->values()->groupBy(function ($item) {
+      return \Carbon\Carbon::parse($item->created_at)->format('F d, Y');
+    });
+    $groupedPaid = $filteredPaid->sortByDesc('created_at')->values()->groupBy(function ($item) {
+      return \Carbon\Carbon::parse($item->created_at)->format('F d, Y');
+    });
+
+    $invListBadgeClass = [
+      'quotation' => 'bg-secondary text-white',
+      'cancelled' => 'bg-dark text-white',
+      'appointment' => 'inv-badge-outline',
+      'service_order' => 'bg-secondary text-white',
+      'invoicing' => 'bg-primary text-white',
+    ];
+    $invListStatusBadge = [
+      'unpaid' => 'bg-secondary text-white',
+      'paid' => 'bg-primary text-white',
+      'cancelled' => 'bg-dark text-white',
+      'voided' => 'bg-dark text-white',
+    ];
   @endphp
 
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -31,13 +52,114 @@
     z-index: 100999 !important;
     }
 
+    /* Select2 — invoicing modal: white / black / blue (#4a90e2), matches service-order client feel */
+    #invoiceModal {
+      --inv-select2-accent: #4a90e2;
+      --inv-select2-border: #ced4da;
+      --inv-select2-text: #212529;
+      --inv-select2-muted: #6c757d;
+      --inv-theme-blue: #4a90e2;
+    }
+
+    /* Invoice modal + payment confirm — section heads and accents: blue / white / black only */
+    #invoiceModal .inv-section-header,
+    #invoiceConfirmPaymentModal .inv-section-header-mini {
+      background-color: var(--inv-theme-blue) !important;
+      color: #ffffff !important;
+      border-bottom: none;
+    }
+
+    #invoiceConfirmPaymentModal .inv-section-header-mini {
+      position: relative;
+    }
+
+    #invoiceConfirmPaymentModal .inv-section-header-mini .btn-close {
+      filter: invert(1) grayscale(100%) brightness(2);
+      opacity: 0.85;
+    }
+
+    #invoiceModal .inv-payment-card {
+      border-color: #dee2e6 !important;
+    }
+
+    #invoiceModal .inv-payment-select {
+      background-color: #ffffff !important;
+    }
+
+    /* Index list: muted badge outline (avoid sky blue / yellow) */
+    .inv-badge-outline {
+      color: var(--inv-theme-blue, #4a90e2) !important;
+      background-color: #ffffff !important;
+      border: 1px solid var(--inv-theme-blue, #4a90e2) !important;
+      font-weight: 600;
+    }
+
     #invoiceModal .select2-dropdown {
     z-index: 100999 !important;
     max-width: min(100vw - 32px, 640px);
-    border: 1px solid #bbf7d0;
-    border-radius: 0.5rem;
+    border: 1px solid var(--inv-select2-border);
+    border-radius: 0.375rem;
     background: #ffffff;
-    box-shadow: 0 0.25rem 1rem rgba(22, 101, 52, 0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    #invoiceModal .select2-container--default .select2-selection--single {
+    background: #ffffff;
+    border: 1px solid var(--inv-select2-border);
+    border-radius: 0.375rem;
+    min-height: 2.375rem;
+    }
+
+    #invoiceModal .select2-container--default.select2-container--focus .select2-selection--single,
+    #invoiceModal .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--inv-select2-accent);
+    box-shadow: 0 0 0 0.15rem rgba(74, 144, 226, 0.2);
+    }
+
+    #invoiceModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--inv-select2-text);
+    line-height: 1.4;
+    padding-left: 0.65rem;
+    }
+
+    #invoiceModal .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: var(--inv-select2-muted);
+    }
+
+    #invoiceModal .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 2.25rem;
+    }
+
+    #invoiceModal .select2-container--default .select2-selection--single .select2-selection__arrow b {
+    border-color: #495057 transparent transparent transparent;
+    }
+
+    #invoiceModal .select2-results__option {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    background: #ffffff;
+    color: var(--inv-select2-text);
+    }
+
+    #invoiceModal .select2-results__option--disabled {
+    color: var(--inv-select2-muted) !important;
+    background: #ffffff !important;
+    }
+
+    /* Keyboard / hover row: blue bar, white text */
+    #invoiceModal .select2-results__option--highlighted.select2-results__option--selectable,
+    #invoiceModal .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+    background-color: var(--inv-select2-accent) !important;
+    color: #ffffff !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .text-danger {
+    color: #ffffff !important;
+    }
+
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .text-muted {
+    color: rgba(255, 255, 255, 0.88) !important;
     }
 
     .btn-source-type {
@@ -45,82 +167,65 @@
     margin-left: 4px;
     }
 
-    /* Invoice index tables (Recent Unpaid/Paid, All Invoices) */
-    table.inv-index-table {
+    /* Invoicing index lists — same striped/bordered table feel as cashier History */
+    .invoice-index-list .history-list-table {
       table-layout: fixed;
       width: 100%;
     }
 
-    table.inv-index-table thead th,
-    table.inv-index-table tbody td {
+    .invoice-index-list .history-list-table th,
+    .invoice-index-list .history-list-table td {
       vertical-align: middle;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
     }
 
-    table.inv-index-table th:nth-child(1),
-    table.inv-index-table td:nth-child(1) {
-      width: 26%;
-      overflow-wrap: anywhere;
+    .invoice-index-list .hist-invoice {
+      white-space: nowrap;
+    }
+
+    .invoice-index-list .hist-customer,
+    .invoice-index-list .hist-vehicle,
+    .invoice-index-list .hist-lastprocessed {
       word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
-    table.inv-index-table th:nth-child(2),
-    table.inv-index-table td:nth-child(2) {
-      width: 12%;
+    .invoice-index-list .hist-tag {
+      white-space: nowrap;
     }
 
-    table.inv-index-table th:nth-child(3),
-    table.inv-index-table td:nth-child(3) {
-      width: 15%;
+    .invoice-index-list .hist-actions {
+      text-align: center;
+      white-space: nowrap;
     }
 
-    table.inv-index-table th:nth-child(4),
-    table.inv-index-table td:nth-child(4) {
-      width: 16%;
-    }
-
-    table.inv-index-table th:nth-child(5),
-    table.inv-index-table td:nth-child(5) {
-      width: 11%;
-    }
-
-    table.inv-index-table th:nth-child(6),
-    table.inv-index-table td:nth-child(6) {
-      width: 20%;
-    }
-
-    .inv-pay-wrap {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.35rem;
-      margin-left: auto;
-      margin-right: auto;
-      min-height: 2.25rem;
-    }
-
-    .inv-pill-center {
+    .invoice-index-list .hist-actions-inner {
       display: flex;
       justify-content: center;
-      align-items: center;
-      width: 100%;
-      min-height: 2.25rem;
-    }
-
-    .inv-index-table .inv-actions-inner {
-      display: flex;
-      justify-content: flex-end;
       align-items: center;
       flex-wrap: wrap;
       gap: 0.25rem;
       min-height: 2.25rem;
     }
 
-    .inv-all-invoices-search .form-control {
-      max-width: 28rem;
+    .invoice-index-list .hist-svc .hist-svc-select {
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
     }
 
-    /* Invoice index tables: center service status picker under header */
+    .inv-all-invoices-search {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .inv-all-invoices-search .form-control {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    /* Modal & other forms: unchanged default for service select */
     .inv-svc-status-select {
       min-width: 7.75rem;
       max-width: 12rem;
@@ -130,12 +235,22 @@
     max-height: min(280px, 45vh) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    scrollbar-width: thin;
+    scrollbar-color: #868e96 #e9ecef;
     }
 
-    #invoiceModal .select2-results__option {
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-    white-space: normal;
+    #invoiceModal .select2-results__options::-webkit-scrollbar {
+    width: 8px;
+    }
+
+    #invoiceModal .select2-results__options::-webkit-scrollbar-track {
+    background: #e9ecef;
+    border-radius: 4px;
+    }
+
+    #invoiceModal .select2-results__options::-webkit-scrollbar-thumb {
+    background: #868e96;
+    border-radius: 4px;
     }
 
     /* Part row: picker + Manual on one horizontal line */
@@ -147,68 +262,65 @@
     min-width: 0;
     }
 
-    /* Part badges — green + yellow accents (theme) */
+    /* Item row badges — neutral on white; invert on blue highlight */
     #invoiceModal .inv-part-badge {
     font-size: 0.75rem;
     font-weight: 500;
     padding: 0.2rem 0.5rem;
     border-radius: 0.35rem;
-    border: 1px solid #bbf7d0;
-    background: #ecfdf5;
-    color: #166534;
+    border: 1px solid var(--inv-select2-border);
+    background: #f8f9fa;
+    color: var(--inv-select2-text);
     }
 
     #invoiceModal .inv-part-badge-pop {
-    border-color: #fde047;
-    background: #fef9c3;
-    color: #713f12;
+    border-color: #dee2e6;
+    background: #ffffff;
+    color: var(--inv-select2-muted);
     }
 
     #invoiceModal .select2-results__option:last-child .inv-part-opt.border-bottom {
     border-bottom: none !important;
     }
 
-    /* Highlighted row: light green wash; badges stay opaque (green + yellow) */
-    #invoiceModal .select2-results__option--highlighted.inv-part-highlight-active,
-    #invoiceModal .select2-container--default .select2-results__option--highlighted {
-      background-color: #d1fae5 !important;
-      color: #14532d !important;
-    }
-
+    #invoiceModal .select2-container--default .select2-results__option--highlighted.inv-part-highlight-active,
     #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-code {
-      color: #15803d !important;
+      color: #ffffff !important;
     }
 
     #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-title {
-      color: #064e3b !important;
+      color: #ffffff !important;
     }
 
-    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-badge-stk {
-      background: #ffffff !important;
-      border: 1px solid #4ade80 !important;
-      color: #166534 !important;
-    }
-
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-badge,
+    #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-badge-stk,
     #invoiceModal .select2-container--default .select2-results__option--highlighted .inv-part-badge-pop {
-      background: #fef08a !important;
-      border: 1px solid #eab308 !important;
-      color: #713f12 !important;
+      background: rgba(255, 255, 255, 0.22) !important;
+      border: 1px solid rgba(255, 255, 255, 0.55) !important;
+      color: #ffffff !important;
     }
 
     #invoiceModal .select2-container--default .select2-results__option--highlighted .badge {
-      background: #ffffff !important;
-      border: 1px solid #86efac !important;
-      color: #166534 !important;
+      background: rgba(255, 255, 255, 0.25) !important;
+      border: 1px solid rgba(255, 255, 255, 0.6) !important;
+      color: #ffffff !important;
     }
 
-    /* Search field in dropdown */
+    /* Search input inside dropdown */
     #invoiceModal .select2-search--dropdown .select2-search__field {
-      margin: 0.25rem 0.5rem 0.5rem;
+      margin: 0.35rem 0.5rem 0.65rem;
       width: calc(100% - 1rem) !important;
-      padding: 0.35rem 0.5rem;
-      border-radius: 0.4rem;
-      border: 1px solid #bbf7d0;
-      background: #fff;
+      padding: 0.4rem 0.65rem;
+      border-radius: 0.375rem;
+      border: 1px solid var(--inv-select2-border);
+      background: #ffffff;
+      color: var(--inv-select2-text);
+    }
+
+    #invoiceModal .select2-search--dropdown .select2-search__field:focus {
+      border-color: var(--inv-select2-accent);
+      outline: none;
+      box-shadow: 0 0 0 0.12rem rgba(74, 144, 226, 0.2);
     }
 
     #invoiceModal #items-table th.inv-item-drag,
@@ -269,10 +381,16 @@
     vertical-align: top;
     }
 
-    /* Part picker: full label (no single-line ellipsis) */
+    /* Part picker row: taller selection box for wrapped labels */
     #invoiceModal #items-table .select2-container--default .select2-selection--single {
     height: auto;
     min-height: 2rem;
+    background: #ffffff;
+    border-color: var(--inv-select2-border);
+    }
+
+    #invoiceModal #items-table .select2-container--default.select2-container--focus .select2-selection--single {
+    border-color: var(--inv-select2-accent);
     }
 
     #invoiceModal #items-table .select2-container--default .select2-selection--single .select2-selection__rendered {
@@ -283,6 +401,12 @@
     padding-right: 1.75rem !important;
     overflow: visible !important;
     text-overflow: clip !important;
+    color: var(--inv-select2-text);
+    }
+
+    /* Selected-value line (stock meta) stays readable */
+    #invoiceModal #items-table .select2-selection--single .inv-part-sel-meta {
+      color: var(--inv-select2-muted);
     }
 
     #invoiceModal #items-table .select2-container--default .select2-selection--single .select2-selection__arrow {
@@ -299,16 +423,15 @@
     .inv-part-sel-lines .inv-part-sel-meta {
     display: block;
     font-size: 0.72rem;
-    color: #5c6770;
+    color: var(--inv-select2-muted, #6c757d);
     margin-top: 0.15rem;
     font-weight: 400;
     }
   </style>
 
   {{-- Full width of .content (no .container): a centered .container made the CTA look "floating" vs full-width tables below --}}
-  <div class="mt-4 mb-3 text-start">
-    <div class="invoice-page-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2">
-    <h1 class="h3 mb-0 fw-bold text-body">Invoicing</h1>
+  <div class="mt-4 mb-3 text-end">
+    <div class="invoice-page-toolbar d-inline-flex flex-wrap align-items-center justify-content-end gap-2">
     <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" data-bs-toggle="modal"
       data-bs-target="#invoiceModal" id="btnCreateInvoice">
     <i class="bi bi-plus-lg"></i> Create Invoice
@@ -328,7 +451,7 @@
       </div>
       <div class="modal-body">
       @if(session('success'))
-      <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <div class="alert alert-primary alert-dismissible fade show border-0 shadow-sm" role="alert" style="background: rgba(74, 144, 226, 0.15); color: #0f172a;">
       {{ session('success') }}
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
@@ -353,7 +476,7 @@
 
         {{-- Header Details --}}
         <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-primary text-white">
+        <div class="card-header inv-section-header fw-semibold py-3">
           Client & Vehicle Details
         </div>
         <div class="card-body p-3">
@@ -490,7 +613,7 @@
 
         {{-- Items --}}
         <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-success text-white">
+        <div class="card-header inv-section-header fw-semibold py-3">
           Items
         </div>
         <div class="card-body p-3">
@@ -512,7 +635,7 @@
           <tfoot>
             <tr>
             <td colspan="7" class="text-end py-2">
-              <button type="button" id="add-item" class="btn btn-sm btn-success">+ Add Item</button>
+              <button type="button" id="add-item" class="btn btn-sm btn-primary">+ Add Item</button>
             </td>
             </tr>
           </tfoot>
@@ -524,7 +647,7 @@
 
         {{-- Jobs --}}
         <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-info text-white">
+        <div class="card-header inv-section-header fw-semibold py-3">
           Jobs
         </div>
         <div class="card-body p-3">
@@ -541,7 +664,7 @@
           <tfoot>
             <tr>
             <td colspan="4" class="text-end">
-              <button type="button" id="add-job" class="btn btn-sm btn-success">+ Add Job</button>
+              <button type="button" id="add-job" class="btn btn-sm btn-primary">+ Add Job</button>
             </td>
             </tr>
           </tfoot>
@@ -571,14 +694,14 @@
         </div>
         </div>
 
-        <div class="card mb-4 border-success">
-        <div class="card-header bg-success bg-opacity-10 fw-bold">Payment (Trans type + split)</div>
+        <div class="card mb-4 shadow-sm inv-payment-card border">
+        <div class="card-header inv-section-header fw-semibold py-3">Payment (Trans type + split)</div>
         <div class="card-body p-3">
           <!-- Row 1: mode + total + trans type -->
           <div class="row g-3 align-items-start">
             <div class="col-12 col-md-3">
               <label class="form-label fw-bold mb-1">Payment mode</label>
-              <select id="payment_mode" class="form-select" style="background:#e6ffe3">
+              <select id="payment_mode" class="form-select inv-payment-select border">
                 <option value="cash_only">Cash only</option>
                 <option value="cashless_only">Cashless only</option>
                 <option value="split">Split (cash + cashless)</option>
@@ -587,7 +710,7 @@
             </div>
             <div class="col-12 col-md-6 col-lg-3">
               <label class="form-label fw-bold mb-1">Trans type</label>
-              <select name="payment_type" id="payment_type" class="form-select" style="background:#e6ffe3">
+              <select name="payment_type" id="payment_type" class="form-select inv-payment-select border">
                 <option value="cash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'cash')>Cash</option>
                 <option value="gcash" @selected(old('payment_type', $invoice->payment_type ?? '') == 'gcash')>G-Cash</option>
                 <option value="debit" @selected(old('payment_type', $invoice->payment_type ?? '') == 'debit')>Debit</option>
@@ -603,7 +726,7 @@
           </div>
 
           <!-- Below: entry fields (no duplicate "total" — Row 1 Total amount is the sale total) -->
-          <div id="inv-pay-dynamic" class="mt-2 pt-3 border-top border-success-subtle">
+          <div id="inv-pay-dynamic" class="mt-2 pt-3 border-top border-secondary-subtle">
 
             <!-- Split only: how much is cash vs cashless (must sum to Total amount) -->
             <div id="inv-split-alloc-row" class="row g-3 mb-1 d-none">
@@ -658,7 +781,7 @@
           </div>
 
           @if(!isset($invoice) || (($invoice->status ?? 'unpaid') !== 'paid'))
-          <div class="border-top border-success-subtle mt-3 pt-3 text-center">
+          <div class="border-top border-secondary-subtle mt-3 pt-3 text-center">
             <button type="button" class="btn btn-success px-4" id="btnInvoiceMarkPaid">
               Mark as paid
             </button>
@@ -684,8 +807,8 @@
     aria-labelledby="invoiceConfirmPaymentModalLabel" aria-hidden="true" data-bs-backdrop="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
       <div class="modal-content shadow border-0">
-        <div class="modal-header py-3 border-0 pb-0 position-relative justify-content-center">
-          <h5 class="modal-title fs-6 text-center fw-semibold" id="invoiceConfirmPaymentModalLabel">Confirm payment</h5>
+        <div class="modal-header inv-section-header-mini py-3 border-0 rounded-top align-items-center position-relative">
+          <h5 class="modal-title fs-6 text-center fw-semibold flex-grow-1 mb-0 text-white" id="invoiceConfirmPaymentModalLabel">Confirm payment</h5>
           <button type="button" class="btn-close position-absolute end-0 me-3 mt-3" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body text-center px-4 pt-2 pb-0 small text-muted">
@@ -693,160 +816,184 @@
         </div>
         <div class="modal-footer border-0 justify-content-center gap-2 pt-3 pb-4 flex-nowrap">
           <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-success btn-sm px-3" id="invoiceConfirmPaymentOk">Confirm</button>
+          <button type="button" class="btn btn-primary btn-sm px-3" id="invoiceConfirmPaymentOk">Confirm</button>
         </div>
       </div>
     </div>
   </div>
 
-  {{-- UNPAID INVOICES --}}
-  <h3 class="mt-5 fw-bold"><i class="bi bi-exclamation-circle text-warning"></i> Recent Unpaid Invoices</h3>
+  <div class="invoice-index-list container mb-5 pb-3">
+  {{-- UNPAID INVOICES — history-style by date --}}
+  <h3 class="mt-5 fw-bold"><i class="bi bi-exclamation-circle text-primary"></i> Recent Unpaid Invoices</h3>
   @if($filteredUnpaid->isEmpty())
-    <div class="alert alert-info">No unpaid invoices in the past 48 hours.</div>
-  @else
-    <div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle inv-index-table">
-    <thead class="table-light">
-      <tr>
-      <th>Customer</th>
-      <th>Vehicle</th>
-      <th class="text-center">Payment</th>
-      <th class="text-center">Service</th>
-      <th class="text-center">Status</th>
-      <th class="text-end">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      @foreach($filteredUnpaid as $h)
-      <tr>
-      <td>{{ $h->client->name ?? $h->customer_name }}</td>
-      <td>{{ $h->vehicle->plate_number ?? $h->vehicle_name }}</td>
-      <td class="text-center align-middle">
-      <div class="inv-pay-wrap">
-      @include('cashier.partials.invoice-payment-column', ['h' => $h])
-      </div>
-      </td>
-      <td class="text-center align-middle">
-      <div class="inv-pill-center">
-      <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="inv-svc-select-wrap">
-      @csrf @method('PUT')
-      <input type="hidden" name="status" value="unpaid">
-      <select name="service_status" class="form-select form-select-sm inv-svc-status-select" onchange="this.form.submit()"
-      data-bs-toggle="tooltip" title="Change Service Status">
-      <option value="pending" {{ $h->service_status == 'pending' ? 'selected' : '' }}>Pending</option>
-      <option value="in_progress" {{ $h->service_status == 'in_progress' ? 'selected' : '' }}>In Progress</option>
-      <option value="done" {{ $h->service_status == 'done' ? 'selected' : '' }}>Done</option>
-      </select>
-      </form>
-      </div>
-      </td>
-      <td class="text-center align-middle">
-      <div class="inv-pill-center">
-      <span class="badge bg-warning text-dark">Unpaid</span>
-      </div>
-      </td>
-      <td class="text-end align-middle">
-      <div class="inv-actions-inner">
-      <div class="btn-group">
-      <a href="{{ route('cashier.invoice.view', $h->id) }}" class="btn btn-sm btn-outline-info"
-      data-bs-toggle="tooltip" title="Print Invoice">
-      <i class="bi bi-printer"></i>
-      </a>
-      <a href="{{ route('cashier.invoice.edit', $h->id) }}?modal=1" class="btn btn-sm btn-outline-primary"
-      data-bs-toggle="tooltip" title="Edit Invoice">
-      <i class="bi bi-pencil-square"></i>
-      </a>
-
-      @if(in_array($h->service_status, ['in_progress', 'done']))
-      <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="d-inline"
-        id="invoice-quick-mark-{{ $h->id }}">
-      @csrf @method('PUT')
-      <input type="hidden" name="status" value="paid">
-      <input type="hidden" name="service_status" value="{{ $h->service_status }}">
-      <button type="button" class="btn btn-sm btn-success js-invoice-quick-mark-paid"
-        data-quick-form="invoice-quick-mark-{{ $h->id }}"
-        data-bs-toggle="tooltip" title="Mark as Paid">
-      <i class="bi bi-check2-circle"></i>
-      </button>
-      </form>
-      @else
-      <button class="btn btn-sm btn-secondary" disabled title="Service must be In Progress or Done">
-      <i class="bi bi-check2-circle"></i>
-      </button>
-      @endif
-
-      </div>
-      </div>
-      </td>
-      </tr>
-    @endforeach
-    </tbody>
-    </table>
+    <div class="alert alert-light border shadow-sm mb-3" role="alert" style="border-color:#4a90e2!important;color:#212529;">
+      No unpaid invoices in the past 48 hours.
     </div>
+  @else
+    @foreach($groupedUnpaid as $date => $records)
+      <h4 class="mt-4">{{ $date }}</h4>
+      <table class="table table-striped table-bordered align-middle history-list-table mb-3">
+        <colgroup>
+          <col style="width:10%;">
+          <col style="width:15%;">
+          <col style="width:10%;">
+          <col style="width:10%;">
+          <col style="width:11%;">
+          <col style="width:11%;">
+          <col style="width:12%;">
+          <col style="width:10%;">
+          <col style="width:11%;">
+        </colgroup>
+        <thead class="table-light">
+          <tr>
+            <th class="hist-invoice font-monospace">Invoice #</th>
+            <th class="hist-customer">Customer</th>
+            <th class="hist-vehicle">Vehicle</th>
+            <th class="hist-tag">Source Type</th>
+            <th class="hist-pay">Payment Type</th>
+            <th class="hist-svc">Service Status</th>
+            <th class="hist-lastprocessed">Last processed</th>
+            <th class="hist-tag">Status</th>
+            <th class="hist-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($records as $h)
+            <tr>
+              <td class="hist-invoice font-monospace">{{ $h->invoice_no ?? '—' }}</td>
+              <td class="hist-customer">{{ $h->resolvedCustomerName() }}</td>
+              <td class="hist-vehicle">{{ $h->vehicle->plate_number ?? $h->vehicle_name ?? '—' }}</td>
+              <td class="hist-tag">
+                <span class="badge {{ $invListBadgeClass[$h->source_type] ?? 'bg-secondary' }}">
+                  {{ ucfirst(str_replace('_', ' ', $h->source_type)) }}
+                </span>
+              </td>
+              <td class="hist-pay">{{ $h->paymentTypeDisplay() }}</td>
+              <td class="hist-svc">
+                <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="m-0">
+                  @csrf @method('PUT')
+                  <input type="hidden" name="status" value="unpaid">
+                  <select name="service_status" class="form-select form-select-sm inv-svc-status-select hist-svc-select"
+                    onchange="this.form.submit()" data-bs-toggle="tooltip" title="Change Service Status">
+                    <option value="pending" {{ $h->service_status == 'pending' ? 'selected' : '' }}>Pending</option>
+                    <option value="in_progress" {{ $h->service_status == 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                    <option value="done" {{ $h->service_status == 'done' ? 'selected' : '' }}>Done</option>
+                  </select>
+                </form>
+              </td>
+              <td class="hist-lastprocessed">{{ $h->lastProcessedByUser?->attributionName() ?? '—' }}</td>
+              <td class="hist-tag">
+                <span class="badge bg-secondary text-white">Unpaid</span>
+              </td>
+              <td class="hist-actions">
+                <div class="hist-actions-inner">
+                  <a href="{{ route('cashier.invoice.view', $h->id) }}" class="btn btn-sm btn-outline-primary" target="_blank">View</a>
+                  <a href="{{ route('cashier.invoice.edit', $h->id) }}?modal=1" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit Invoice">
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
+                  @if(in_array($h->service_status, ['in_progress', 'done']))
+                    <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="d-inline" id="invoice-quick-mark-{{ $h->id }}">
+                      @csrf @method('PUT')
+                      <input type="hidden" name="status" value="paid">
+                      <input type="hidden" name="service_status" value="{{ $h->service_status }}">
+                      <button type="button" class="btn btn-sm btn-primary js-invoice-quick-mark-paid"
+                        data-quick-form="invoice-quick-mark-{{ $h->id }}" data-bs-toggle="tooltip" title="Mark as Paid">
+                        <i class="bi bi-check2-circle"></i>
+                      </button>
+                    </form>
+                  @else
+                    <button type="button" class="btn btn-sm btn-secondary" disabled title="Service must be In Progress or Done">
+                      <i class="bi bi-check2-circle"></i>
+                    </button>
+                  @endif
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endforeach
   @endif
 
-  {{-- PAID INVOICES --}}
-  <h3 class="mt-5 fw-bold"><i class="bi bi-check-circle text-success"></i> Recent Paid Invoices</h3>
+  {{-- PAID INVOICES — history-style by date --}}
+  <h3 class="mt-5 fw-bold"><i class="bi bi-check-circle text-primary"></i> Recent Paid Invoices</h3>
   @if($filteredPaid->isEmpty())
-    <div class="alert alert-info">No paid invoices in the past 48 hours.</div>
-  @else
-    <div class="table-responsive shadow-sm rounded">
-    <table class="table table-hover align-middle inv-index-table">
-    <thead class="table-light">
-      <tr>
-      <th>Customer</th>
-      <th>Vehicle</th>
-      <th class="text-center">Payment</th>
-      <th class="text-center">Service</th>
-      <th class="text-center">Status</th>
-      <th class="text-end">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      @foreach($filteredPaid as $h)
-      <tr>
-      <td>{{ $h->client->name ?? $h->customer_name }}</td>
-      <td>{{ $h->vehicle->plate_number ?? $h->vehicle_name }}</td>
-      <td class="text-center align-middle">
-      <div class="inv-pay-wrap">
-      @include('cashier.partials.invoice-payment-column', ['h' => $h])
-      </div>
-      </td>
-      <td class="text-center align-middle">
-      <div class="inv-pill-center">
-      <span class="badge bg-light text-dark">{{ ucfirst(str_replace('_', ' ', $h->service_status)) }}</span>
-      </div>
-      </td>
-      <td class="text-center align-middle">
-      <div class="inv-pill-center">
-      <span class="badge bg-success">Paid</span>
-      </div>
-      </td>
-      <td class="text-end align-middle">
-      <div class="inv-actions-inner">
-      <a href="{{ route('cashier.invoice.view', $h->id) }}" class="btn btn-sm btn-outline-info"
-      data-bs-toggle="tooltip" title="View Invoice">
-      <i class="bi bi-eye"></i>
-      </a>
-      </div>
-      </td>
-      </tr>
-    @endforeach
-    </tbody>
-    </table>
+    <div class="alert alert-light border shadow-sm mb-3" role="alert" style="border-color:#4a90e2!important;color:#212529;">
+      No paid invoices in the past 48 hours.
     </div>
+  @else
+    @foreach($groupedPaid as $date => $records)
+      <h4 class="mt-4">{{ $date }}</h4>
+      <table class="table table-striped table-bordered align-middle history-list-table mb-3">
+        <colgroup>
+          <col style="width:10%;">
+          <col style="width:15%;">
+          <col style="width:10%;">
+          <col style="width:10%;">
+          <col style="width:11%;">
+          <col style="width:11%;">
+          <col style="width:12%;">
+          <col style="width:10%;">
+          <col style="width:11%;">
+        </colgroup>
+        <thead class="table-light">
+          <tr>
+            <th class="hist-invoice font-monospace">Invoice #</th>
+            <th class="hist-customer">Customer</th>
+            <th class="hist-vehicle">Vehicle</th>
+            <th class="hist-tag">Source Type</th>
+            <th class="hist-pay">Payment Type</th>
+            <th class="hist-svc">Service Status</th>
+            <th class="hist-lastprocessed">Last processed</th>
+            <th class="hist-tag">Status</th>
+            <th class="hist-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($records as $h)
+            <tr>
+              <td class="hist-invoice font-monospace">{{ $h->invoice_no ?? '—' }}</td>
+              <td class="hist-customer">{{ $h->resolvedCustomerName() }}</td>
+              <td class="hist-vehicle">{{ $h->vehicle->plate_number ?? $h->vehicle_name ?? '—' }}</td>
+              <td class="hist-tag">
+                <span class="badge {{ $invListBadgeClass[$h->source_type] ?? 'bg-secondary' }}">
+                  {{ ucfirst(str_replace('_', ' ', $h->source_type)) }}
+                </span>
+              </td>
+              <td class="hist-pay">{{ $h->paymentTypeDisplay() }}</td>
+              <td class="hist-svc">{{ ucfirst(str_replace('_', ' ', $h->service_status)) }}</td>
+              <td class="hist-lastprocessed">{{ $h->lastProcessedByUser?->attributionName() ?? '—' }}</td>
+              <td class="hist-tag">
+                <span class="badge {{ $invListStatusBadge[$h->status] ?? 'bg-secondary' }}">{{ ucfirst($h->status) }}</span>
+              </td>
+              <td class="hist-actions">
+                <div class="hist-actions-inner">
+                  <a href="{{ route('cashier.invoice.view', $h->id) }}" class="btn btn-sm btn-outline-primary" target="_blank">View</a>
+                  <a href="{{ route('cashier.invoice.edit', $h->id) }}?modal=1" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit Invoice">
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    @endforeach
   @endif
 
-  {{-- ALL INVOICES (Paginated) --}}
+  @isset($recentAll)
+  {{-- ALL INVOICES (Paginated + live search) --}}
   <h3 class="mt-5 fw-bold"><i class="bi bi-collection text-secondary"></i> All Invoices</h3>
   <div class="inv-all-invoices-search mb-3 mt-3">
-    <input type="text" id="live-search" class="form-control" placeholder="Search invoice, customer, or plate...">
-
+    <input type="text" id="live-search" class="form-control" placeholder="Search invoice, customer, plate, or last processor...">
   </div>
-
 
   <div id="live-search-results">
     @include('cashier.partials.invoice-results', ['results' => $recentAll])
+  </div>
+
+  @endisset
+
   </div>
 
 
@@ -956,16 +1103,40 @@
 
 
     // Client and Vehicle Search
+    var $invClientSel = $('#client_id');
+
+    /** Client AJAX: remembers last typed query from each request so it survives Select2 clearing the box on pick */
+    function invClientAjaxRememberTerm(term) {
+      var t = String(term || '').trim();
+      if (t) $invClientSel.data('clientAjaxSearchTerm', t);
+    }
+
+    /** Wait until dropdown search input exists (Select2 mounts it slightly after select2:open) */
+    function invClientSearchWhenReady(doFn) {
+      var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      function tick() {
+        var $fld = invClientSearchFld();
+        if ($fld.length) return doFn($fld);
+        var elapsed = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
+        if (elapsed < 400) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(function () { requestAnimationFrame(tick); });
+    }
+
     // ─── CLIENT SELECT2 ───
-    $('#client_id').select2({
+    $invClientSel.select2({
     placeholder: '-- search client --',
     allowClear: true,
+    minimumInputLength: 0,
     ajax: {
       url: '{{ route("cashier.ajax.clients") }}',
 
       dataType: 'json',
       delay: 250,
-      data: params => ({ q: params.term }),
+      data: params => {
+        invClientAjaxRememberTerm(params.term);
+        return { q: params.term };
+      },
       processResults: data => ({
       results: data.map(client => ({
         id: client.id,
@@ -979,8 +1150,36 @@
     dropdownParent: $('#invoiceModal')
     });
 
+    /** Close on pick + reopen restores filtered list via stored query */
+    var $invModalForClient = $('#invoiceModal');
+    function invClientSearchFld() {
+      var $f = $invModalForClient.find('.select2-container.select2-container--open .select2-search__field');
+      if ($f.length) return $f;
+      try {
+        var s2 = $invClientSel.data('select2');
+        if (s2 && s2.dropdown && s2.dropdown.$dropdown && s2.dropdown.$dropdown.length) {
+          return s2.dropdown.$dropdown.find('.select2-search__field');
+        }
+      } catch (e) {}
+      return $();
+    }
+    $invClientSel.on('select2:closing', function () {
+      var $fld = invClientSearchFld();
+      if (!$fld.length) return;
+      var v = String($fld.val() || '').trim();
+      if (v) $invClientSel.data('clientAjaxSearchTerm', v);
+    }).on('select2:open', function () {
+      var term = $invClientSel.data('clientAjaxSearchTerm');
+      invClientSearchWhenReady(function ($fld) {
+        if (term) $fld.val(term);
+        $fld.trigger('input');
+      });
+    }).on('select2:clear', function () {
+      $invClientSel.removeData('clientAjaxSearchTerm');
+    });
+
     // Clear vehicle select when new client is selected
-    $('#client_id').on('select2:select', () => {
+    $('#client_id').on('select2:select', function () {
     $('#vehicle_id').val(null).trigger('change');
     });
 
@@ -992,6 +1191,7 @@
     $('input[name="address"]').val(client.address || '');
     });
 
+    if ($('#live-search').length) {
     $('#live-search').on('input', function () {
     const query = $(this).val();
     $.ajax({
@@ -1002,11 +1202,13 @@
       }
     });
     });
+    }
 
     // ─── VEHICLE SELECT2 ───
     $('#vehicle_id').select2({
     placeholder: '-- search vehicle --',
     allowClear: true,
+    closeOnSelect: false,
     ajax: {
       url: '{{ route("cashier.ajax.vehicles") }}',
       dataType: 'json',
@@ -1045,7 +1247,6 @@
     // ─── Item row with Manual‐toggle + select2 autopopulate ───
     // ─── Item row with Manual-popup + Select2 autopopulate ───
     function addItemRow(data = null) {
-    const invAddRowT0 = (typeof performance !== 'undefined' ? performance.now() : 0);
     const idx = $('#items-table tbody tr').length;
     const partId = data?.part_id || '';
     const qty = data?.quantity || 1;
@@ -1069,7 +1270,7 @@
       <option value="">-- search part --</option>
       </select>
       </div>
-      <button type="button" class="btn btn-warning btn-sm manual-toggle flex-shrink-0">Manual</button>
+      <button type="button" class="btn btn-outline-primary btn-sm manual-toggle flex-shrink-0">Manual</button>
       </div>
       <div class="manual-fields mt-2 d-none">
     <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" placeholder="Part Name">
@@ -1078,7 +1279,7 @@
     <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" placeholder="Selling ₱">
     <div class="d-flex gap-2">
     <button type="button" class="btn btn-sm btn-secondary cancel-manual">Cancel</button>
-    <button type="button" class="btn btn-sm btn-success save-manual">Save</button>
+    <button type="button" class="btn btn-sm btn-primary save-manual">Save</button>
     </div>
     </div>
 
@@ -1094,7 +1295,7 @@
     <td class="inv-col-discount inv-col-money"><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.discount_value || ''}"></td>
 
     <td class="col-line-total inv-col-linetotal text-end"><span class="line-total-amount">${lineTotal}</span></td>
-    <td class="inv-col-actions"><button type="button" class="btn btn-sm btn-danger remove-btn">✕</button></td>
+    <td class="inv-col-actions"><button type="button" class="btn btn-sm btn-outline-dark remove-btn" title="Remove row">✕</button></td>
     </tr>`);
 
     const $sel = row.find('.part-select').select2({
@@ -1123,16 +1324,26 @@
       templateSelection: invInvoicePartTplSelection
     });
 
-    // #region agent log
-    (function () {
-      var ms = (typeof performance !== 'undefined' && invAddRowT0) ? Math.round(performance.now() - invAddRowT0) : null;
-      var nPref = 0;
-      try { nPref = Object.keys(window.invoicePartsPrefill || {}).length; } catch (e) {}
-      fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'c4fe64' }, body: JSON.stringify({ sessionId: 'c4fe64', location: 'invoice.blade.php:addItemRow', message: 'invoice part select2 ajax init', data: { initMs: ms, prefillKeys: nPref, mode: 'ajax-pagination' }, timestamp: Date.now(), hypothesisId: 'H1', runId: 'invoice-part-perf' }) }).catch(function () {});
-    }());
-    // #endregion
+    /** Part picker: closes on choice; reopening restores last search query + AJAX list */
+    var $invoiceModalParts = $('#invoiceModal');
+    $sel.on('select2:closing', function () {
+      var $fld = $invoiceModalParts.find('.select2-container.select2-container--open .select2-search__field');
+      if ($fld.length) {
+        $sel.data('invPartAjaxSearchTerm', String($fld.val() || '').trim());
+      }
+    }).on('select2:open', function () {
+      var term = $sel.data('invPartAjaxSearchTerm');
+      if (!term) return;
+      requestAnimationFrame(function () {
+        var $fld = $invoiceModalParts.find('.select2-container.select2-container--open .select2-search__field');
+        if (!$fld.length) return;
+        $fld.val(term);
+        $fld.trigger('input');
+      });
+    }).on('select2:clear', function () {
+      $sel.removeData('invPartAjaxSearchTerm');
+    });
 
-    // pre-select on edit
     if (partId) {
       var pre = window.invoicePartsPrefill && window.invoicePartsPrefill[String(partId)];
       if (pre) {
@@ -1146,8 +1357,12 @@
       }
     }
 
-    // inventory selection → pricing
+    // inventory selection → pricing (also stash search query; closing timing can strip --open)
     $sel.on('select2:select', e => {
+      var $fldSel = $invoiceModalParts.find('.select2-container.select2-container--open .select2-search__field');
+      if ($fldSel.length) {
+        $sel.data('invPartAjaxSearchTerm', String($fldSel.val() || '').trim());
+      }
       const price = e.params.data.price || 0;
       const acquisitionPrice = e.params.data.acquisition_price || 0;
       row.find('[name$="[price]"]').val(price.toFixed(2));
@@ -1264,15 +1479,15 @@
     const techId = data && data.technician_id ? data.technician_id : '';
     const total = data && data.total ? data.total : '';
     const row = $(`<tr>
-      <td><input name="jobs[${idx}][job_description]" class="form-control form-control-sm" value="${desc}"></td>
-      <td>
+      <td class="text-center align-middle"><input name="jobs[${idx}][job_description]" class="form-control form-control-sm" value="${desc}"></td>
+      <td class="text-center align-middle">
       <select name="jobs[${idx}][technician_id]" class="form-select form-select-sm">
       <option value="">-- select tech --</option>
       ${technicians.map(t => `<option value="${t.id}" ${techId == t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
       </select>
       </td>
-      <td><input name="jobs[${idx}][total]" type="number" step="0.01" class="form-control form-control-sm" value="${total}"></td>
-      <td><button type="button" class="btn btn-sm btn-danger remove-btn">✕</button></td>
+      <td class="text-center align-middle"><input name="jobs[${idx}][total]" type="number" step="0.01" class="form-control form-control-sm" value="${total}"></td>
+      <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-dark remove-btn" title="Remove row">✕</button></td>
     </tr>`);
     row.find('[name$="[total]"]').on('input', recalc);
     row.find('.remove-btn').on('click', function () {

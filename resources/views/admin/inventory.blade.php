@@ -52,12 +52,36 @@
     </div>
 
     {{-- Inventory List --}}
+    @php
+      $invSort = \App\Models\Inventory::normalizeIndexSort(request('sort'));
+      $invSortLabels = \App\Models\Inventory::indexSortLabels();
+    @endphp
     <div class="card">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-      <span>Inventory List</span>
-      <div class="d-flex">
-      <input id="searchInput" type="search" class="form-control form-control-sm me-2" placeholder="Search name, part #, supplier…"
-        value="{{ request('q', '') }}" autocomplete="off" style="min-width: 220px;">
+    <div class="card-header bg-primary text-white py-2 px-3">
+      <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2 gap-md-3">
+      <span class="fw-semibold text-nowrap me-md-auto">Inventory List</span>
+      <div class="d-flex align-items-center gap-2 flex-nowrap min-w-0 ms-md-auto">
+      <div class="input-group input-group-sm flex-grow-1 min-w-0" style="max-width: 22rem;">
+        <span class="input-group-text bg-light border-secondary-subtle py-0 d-none d-sm-inline-flex" aria-hidden="true"><i class="bi bi-search"></i></span>
+        <input id="searchInput" name="q" type="search" class="form-control" autocomplete="off"
+          placeholder="Search name, part #, supplier…" value="{{ request('q', '') }}"
+          aria-label="Search inventory" inputmode="search">
+      </div>
+      <div class="dropdown flex-shrink-0">
+        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown"
+          data-bs-auto-close="outside" aria-expanded="false" aria-label="Filter and sort inventory list">
+          {{ $invSortLabels[$invSort] ?? 'Newest' }}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          @foreach($invSortLabels as $sortKey => $sortLabel)
+          <li>
+            <a class="dropdown-item @if($invSort === $sortKey) active fw-semibold @endif"
+              href="{{ route('admin.inventory', array_merge(request()->only('q'), ['sort' => $sortKey])) }}">{{ $sortLabel }}</a>
+          </li>
+          @endforeach
+        </ul>
+      </div>
+      </div>
       </div>
     </div>
     <div class="card-body p-0">
@@ -68,6 +92,7 @@
         <th>Item Name</th>
         <th>Part #</th>
         <th>Qty</th>
+        <th title="Units billed on paid invoices (linked part)">Sold</th>
         <th>Selling (₱)</th>
         <th>Acquisition (₱)</th>
         <th>Supplier</th>
@@ -82,8 +107,9 @@
       <td>{{ ($inventories->currentPage() - 1) * $inventories->perPage() + $loop->iteration }}</td>
       <td>{{ $inv->item_name }}</td>
       <td>{{ $inv->part_number }}</td>
-      <td>{{ $inv->quantity }}</td>
-      <td>{{ number_format($inv->selling, 2) }}</td>
+      <td class="text-end">{{ $inv->quantity }}</td>
+      <td class="text-end fw-semibold">{{ (int) ($inv->sold_qty ?? 0) }}</td>
+      <td class="text-end">{{ number_format($inv->selling, 2) }}</td>
       <td>{{ $inv->acquisition_price ? number_format($inv->acquisition_price, 2) : '-' }}</td>
       <td>{{ $inv->supplier ?? '-' }}</td>
       <td class="text-center">
@@ -106,7 +132,7 @@
       </tr>
       @empty
       <tr>
-      <td colspan="8" class="text-center text-muted py-3">
+      <td colspan="9" class="text-center text-muted py-3">
         @if(request()->filled('q'))
           No items match your search.
         @else
@@ -207,16 +233,46 @@
     (function () {
       const el = document.getElementById('searchInput');
       if (!el) return;
+
+      const DEBOUNCE_MS = 700;
+
+      function currentQueryParam() {
+        return new URL(window.location.href).searchParams.get('q') ?? '';
+      }
+
+      function navigateIfSearchChanged(trimmed) {
+        if (trimmed === currentQueryParam()) {
+          return;
+        }
+        const url = new URL(window.location.href);
+        if (trimmed) {
+          url.searchParams.set('q', trimmed);
+        } else {
+          url.searchParams.delete('q');
+        }
+        url.searchParams.delete('page');
+        window.location.assign(url.toString());
+      }
+
       let t;
-      el.addEventListener('input', () => {
+      el.addEventListener('input', function () {
         clearTimeout(t);
-        t = setTimeout(() => {
-          const url = new URL(window.location.href);
-          const v = el.value.trim();
-          if (v) url.searchParams.set('q', v); else url.searchParams.delete('q');
-          url.searchParams.delete('page');
-          window.location.assign(url.toString());
-        }, 400);
+        t = window.setTimeout(function () {
+          navigateIfSearchChanged(el.value.trim());
+        }, DEBOUNCE_MS);
+      });
+
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          clearTimeout(t);
+          navigateIfSearchChanged(el.value.trim());
+        }
+      });
+
+      el.addEventListener('search', function () {
+        clearTimeout(t);
+        navigateIfSearchChanged(el.value.trim());
       });
     })();
 

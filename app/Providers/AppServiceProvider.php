@@ -3,12 +3,13 @@
 namespace App\Providers;
 
 use App\Models\Inventory;
+use App\Models\User;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,9 +30,20 @@ class AppServiceProvider extends ServiceProvider
 
         RedirectIfAuthenticated::redirectUsing(function () {
             $user = Auth::user();
-            $isAdmin = $user && (($user->role ?? '') === 'admin');
 
-            return route($isAdmin ? 'admin.home' : 'cashier.home');
+            if (! $user || ! $user->hasValidStaffRole()) {
+                if ($user) {
+                    Auth::logout();
+                    request()->session()->invalidate();
+                    request()->session()->regenerateToken();
+                }
+
+                return route('login');
+            }
+
+            return $user->normalizedRole() === User::ROLE_ADMIN
+                ? route('admin.home')
+                : route('cashier.home');
         });
 
         Paginator::useBootstrap();

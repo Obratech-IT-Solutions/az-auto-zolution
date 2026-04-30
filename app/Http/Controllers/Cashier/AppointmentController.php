@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Invoice;
 use App\Models\Client;
+use App\Models\Invoice;
 use App\Models\Vehicle;
 use App\Services\ClientVehicleResolver;
-use App\Support\CashierListLimits;
+use App\Support\InvoiceStaffStamp;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
 
 class AppointmentController extends Controller
 {
@@ -31,7 +30,7 @@ class AppointmentController extends Controller
             if ($h->appointment_date) {
                 $events[] = [
                     'title' => ($h->client->name ?? $h->customer_name)
-                        . ($h->vehicle ? ' - ' . $h->vehicle->plate_number : ''),
+                        .($h->vehicle ? ' - '.$h->vehicle->plate_number : ''),
                     'start' => $h->appointment_date,
                     'url' => route('cashier.appointment.edit', $h->id),
 
@@ -40,7 +39,7 @@ class AppointmentController extends Controller
                         'service_order' => '#6c757d', // gray
                         'invoicing' => '#28a745',     // green
                         default => '#0dcaf0',         // cyan for appointments
-                    }
+                    },
                 ];
             }
         }
@@ -48,7 +47,6 @@ class AppointmentController extends Controller
         // Pass data to the view
         return view('cashier.appointment', compact('clients', 'vehicles', 'history', 'events'));
     }
-
 
     // Show the form to create a new appointment
     public function create()
@@ -103,7 +101,7 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            Invoice::create([
+            Invoice::create(array_merge([
                 'client_id' => $clientId,
                 'vehicle_id' => $vehicleId,
                 'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
@@ -114,12 +112,11 @@ class AppointmentController extends Controller
 
                 'appointment_date' => $request->appointment_date,
                 'note' => $request->note,
-            ]);
+            ], InvoiceStaffStamp::attributePairForCreate()));
         });
 
         return redirect()->route('cashier.appointment.index')->with('success', 'Appointment created!');
     }
-
 
     // Show the form for editing an existing quotation (appointment)
     public function edit($id)
@@ -141,7 +138,7 @@ class AppointmentController extends Controller
             if ($h->appointment_date) {
                 $events[] = [
                     'title' => ($h->client->name ?? $h->customer_name)
-                        . ($h->vehicle ? ' - ' . $h->vehicle->plate_number : ''),
+                        .($h->vehicle ? ' - '.$h->vehicle->plate_number : ''),
                     'start' => $h->appointment_date,
                     'url' => route('cashier.appointment.edit', $h->id),
                     'color' => match ($h->source_type) {
@@ -149,7 +146,7 @@ class AppointmentController extends Controller
                         'service_order' => '#6c757d',
                         'invoicing' => '#28a745',
                         default => '#0dcaf0',
-                    }
+                    },
                 ];
             }
         }
@@ -164,9 +161,10 @@ class AppointmentController extends Controller
 
         // Fast update for just the source_type
         if ($request->has('quick_update') && $request->has('source_type')) {
-            $invoice->update([
-                'source_type' => $request->source_type
-            ]);
+            $invoice->update(array_merge([
+                'source_type' => $request->source_type,
+            ], InvoiceStaffStamp::attributePairForUpdate()));
+
             return redirect()->route('cashier.appointment.index')->with('success', 'Status updated!');
         }
 
@@ -210,7 +208,7 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            $invoice->update([
+            $invoice->update(array_merge([
                 'client_id' => $clientId,
                 'vehicle_id' => $vehicleId,
                 'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
@@ -221,12 +219,11 @@ class AppointmentController extends Controller
 
                 'appointment_date' => $request->appointment_date,
                 'note' => $request->note,
-            ]);
+            ], InvoiceStaffStamp::attributePairForUpdate()));
         });
 
         return redirect()->route('cashier.appointment.index')->with('success', 'Appointment updated!');
     }
-
 
     // Delete an appointment
     public function destroy($id)
@@ -241,8 +238,14 @@ class AppointmentController extends Controller
     // View an appointment (appointment)
     public function view($id)
     {
-        $invoice = Invoice::with(['client', 'vehicle'])->findOrFail($id);
-
+        $invoice = Invoice::with([
+            'client',
+            'vehicle',
+            'items.part',
+            'jobs.technician',
+            'createdByUser',
+            'lastProcessedByUser',
+        ])->findOrFail($id);
 
         return view('cashier.appointment-view', compact('invoice'));
     }

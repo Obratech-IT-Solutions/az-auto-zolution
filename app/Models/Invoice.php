@@ -16,7 +16,7 @@ class Invoice extends Model
         'service_status',
         'status',
         'appointment_date',
-        'note', 
+        'note',
         'subtotal',
         'total_discount',
         'vat_amount',
@@ -30,35 +30,39 @@ class Invoice extends Model
         'invoice_no',
         'number',
         'address',
+        'created_by_user_id',
+        'last_processed_by_user_id',
         'created_at',
     ];
 
     protected $attributes = [
-        'source_type'    => 'quotation',
+        'source_type' => 'quotation',
         'service_status' => 'pending',
-        'status'         => 'unpaid',
+        'status' => 'unpaid',
     ];
 
     protected $casts = [
         'appointment_date' => 'datetime',
-        'subtotal'         => 'decimal:2',
-        'total_discount'   => 'decimal:2',
-        'vat_amount'       => 'decimal:2',
-        'grand_total'              => 'decimal:2',
-        'payment_cash_amount'      => 'decimal:2',
-        'payment_non_cash_amount'  => 'decimal:2',
-        'cash_tender_amount'       => 'decimal:2',
-        'cash_change_amount'       => 'decimal:2',
-        'cashless_tender_amount'   => 'decimal:2',
-        'number'       => 'string',
-        'address'      => 'string',
+        'subtotal' => 'decimal:2',
+        'total_discount' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
+        'grand_total' => 'decimal:2',
+        'payment_cash_amount' => 'decimal:2',
+        'payment_non_cash_amount' => 'decimal:2',
+        'cash_tender_amount' => 'decimal:2',
+        'cash_change_amount' => 'decimal:2',
+        'cashless_tender_amount' => 'decimal:2',
+        'number' => 'string',
+        'address' => 'string',
 
     ];
 
     // ✅ Add 'cancelled' here
-    public static $sourceTypes     = ['quotation', 'cancelled', 'appointment', 'service_order', 'invoicing'];
+    public static $sourceTypes = ['quotation', 'cancelled', 'appointment', 'service_order', 'invoicing'];
+
     public static $serviceStatuses = ['pending', 'in_progress', 'done'];
-    public static $statuses        = ['unpaid', 'paid', 'cancelled', 'voided'];
+
+    public static $statuses = ['unpaid', 'paid', 'cancelled', 'voided'];
 
     /**
      * Relations
@@ -81,6 +85,73 @@ class Invoice extends Model
     public function jobs()
     {
         return $this->hasMany(InvoiceJob::class);
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function lastProcessedByUser()
+    {
+        return $this->belongsTo(User::class, 'last_processed_by_user_id');
+    }
+
+    /** Payment type label for cashier lists, history, and print (handles split tenders). */
+    public function paymentTypeDisplay(): string
+    {
+        $slug = strtolower(trim((string) ($this->payment_type ?? '')));
+
+        if ($this->usesSplitCashAndCashlessTenders()) {
+            if (in_array($slug, ['gcash', 'debit', 'credit', 'non_cash'], true)) {
+                return 'Cash/'.$this->cashlessPairLabel($slug);
+            }
+
+            return 'Cash/Mixed';
+        }
+
+        if ($slug === '') {
+            return '—';
+        }
+
+        if ($slug === 'split') {
+            return 'Split';
+        }
+
+        return $this->singlePaymentRailLabel($slug);
+    }
+
+    /** Both cash and cashless amounts recorded on the invoice (cash + gcash/debit/etc.). */
+    public function usesSplitCashAndCashlessTenders(): bool
+    {
+        $pc = (float) ($this->payment_cash_amount ?? 0);
+        $pn = (float) ($this->payment_non_cash_amount ?? 0);
+
+        return $pc >= 0.005 && $pn >= 0.005;
+    }
+
+    /** Second rail after "Cash/" in split summaries. */
+    private function cashlessPairLabel(string $slug): string
+    {
+        return match (strtolower(trim($slug))) {
+            'gcash' => 'GCash',
+            'debit' => 'Debit',
+            'credit' => 'Credit',
+            'non_cash' => 'Non cash',
+            default => 'Mixed',
+        };
+    }
+
+    private function singlePaymentRailLabel(string $slug): string
+    {
+        return match ($slug) {
+            'cash' => 'Cash',
+            'gcash' => 'GCash',
+            'debit' => 'Debit',
+            'credit' => 'Credit',
+            'non_cash' => 'Non cash',
+            default => ucfirst(str_replace('_', ' ', $slug)),
+        };
     }
 
     /**
@@ -226,5 +297,4 @@ class Invoice extends Model
     {
         return $this->service_status === 'done';
     }
-    
 }

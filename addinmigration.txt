@@ -1,0 +1,40 @@
+fields aded first in invoides for split payment
+
+
+-- 1) Add columns (adjust AFTER ... if you prefer a different position)
+ALTER TABLE `invoices`
+  ADD COLUMN `created_by_user_id` BIGINT UNSIGNED NULL DEFAULT NULL AFTER `address`,
+  ADD COLUMN `last_processed_by_user_id` BIGINT UNSIGNED NULL DEFAULT NULL AFTER `created_by_user_id`;
+
+-- 2) Foreign keys → users.id, keep rows if user is deleted
+ALTER TABLE `invoices`
+  ADD CONSTRAINT `invoices_created_by_user_id_foreign`
+    FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `invoices_last_processed_by_user_id_foreign`
+    FOREIGN KEY (`last_processed_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+trackign of lgos in inventory 
+CREATE TABLE `inventory_stock_movements` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
+  `inventory_id` bigint UNSIGNED NOT NULL,
+  `user_id` bigint UNSIGNED NULL DEFAULT NULL,
+  `direction` ENUM('add', 'remove') NOT NULL COMMENT 'add = stock in, remove = stock out',
+  `quantity` int UNSIGNED NOT NULL COMMENT 'units moved in this event (always positive)',
+  `quantity_before` int NOT NULL,
+  `quantity_after` int NOT NULL,
+  `reason` varchar(1000) NULL DEFAULT NULL COMMENT 'use for removals (required in app)',
+  `note` varchar(1000) NULL DEFAULT NULL COMMENT 'optional, e.g. delivery note',
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `inventory_stock_movements_inventory_id_index` (`inventory_id`),
+  KEY `inventory_stock_movements_user_id_index` (`user_id`),
+  KEY `inventory_stock_movements_created_at_index` (`created_at`),
+  CONSTRAINT `inventory_stock_movements_inventory_id_foreign`
+    FOREIGN KEY (`inventory_id`) REFERENCES `inventories` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `inventory_stock_movements_user_id_foreign`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+    migrate the users

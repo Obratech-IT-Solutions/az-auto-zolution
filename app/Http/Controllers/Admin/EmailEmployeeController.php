@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\Technician;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class EmailEmployeeController extends Controller
 {
@@ -14,23 +15,24 @@ class EmailEmployeeController extends Controller
     {
         $users = User::all();
         $technicians = Technician::all();
+
         return view('admin.email-employee', compact('users', 'technicians'));
     }
 
     public function storeUser(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
-            'role'     => 'required|string',
+            'role' => 'required|string',
         ]);
 
         User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role'     => $request->role,
+            'role' => $request->role,
         ]);
 
         return back()->with('success', 'User created successfully.');
@@ -41,15 +43,15 @@ class EmailEmployeeController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'role'  => 'required|string',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'role' => ['required', 'string', Rule::in(User::staffRoles())],
             'password' => 'nullable|min:6',
         ]);
 
-        $user->name  = $request->name;
+        $user->name = $request->name;
         $user->email = $request->email;
-        $user->role  = $request->role;
+        $user->role = $request->role;
 
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
@@ -63,18 +65,19 @@ class EmailEmployeeController extends Controller
     public function destroyUser($id)
     {
         User::destroy($id);
+
         return back()->with('success', 'User deleted successfully.');
     }
 
     public function storeTechnician(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'position' => 'required|string|max:255',
         ]);
 
         Technician::create([
-            'name'     => $request->name,
+            'name' => $request->name,
             'position' => $request->position,
         ]);
 
@@ -86,12 +89,12 @@ class EmailEmployeeController extends Controller
         $tech = Technician::findOrFail($id);
 
         $request->validate([
-            'name'     => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'position' => 'required|string|max:255',
         ]);
 
         $tech->update([
-            'name'     => $request->name,
+            'name' => $request->name,
             'position' => $request->position,
         ]);
 
@@ -101,6 +104,7 @@ class EmailEmployeeController extends Controller
     public function destroyTechnician($id)
     {
         Technician::destroy($id);
+
         return back()->with('success', 'Technician deleted successfully.');
     }
 }

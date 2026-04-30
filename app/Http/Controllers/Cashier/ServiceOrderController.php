@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Invoice;
 use App\Models\Client;
-use App\Models\Vehicle;
 use App\Models\Inventory;
+use App\Models\Invoice;
 use App\Models\Technician;
+use App\Models\Vehicle;
 use App\Services\ClientVehicleResolver;
 use App\Support\CashierListLimits;
+use App\Support\InvoiceStaffStamp;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ServiceOrderController extends Controller
@@ -56,9 +57,8 @@ class ServiceOrderController extends Controller
             'odometer' => 'nullable|string',
             'payment_type' => 'required|string',
             'payment_cash_amount' => 'nullable|numeric|min:0',
-            'payment_non_cash_amount' => 'nullable|numeric|min:0'
+            'payment_non_cash_amount' => 'nullable|numeric|min:0',
         ]);
-
 
         $resolver = app(ClientVehicleResolver::class);
         $clientId = $resolver->resolveClientId($request);
@@ -70,7 +70,7 @@ class ServiceOrderController extends Controller
         }
 
         DB::transaction(function () use ($request, $clientId, $vehicleId, $manualCustomer) {
-            $invoice = Invoice::create([
+            $invoice = Invoice::create(array_merge([
                 'client_id' => $clientId,
                 'vehicle_id' => $vehicleId,
                 'customer_name' => $manualCustomer !== '' ? $manualCustomer : null,
@@ -87,7 +87,7 @@ class ServiceOrderController extends Controller
                 'payment_non_cash_amount' => $request->filled('payment_non_cash_amount') ? $request->payment_non_cash_amount : null,
                 'number' => $request->number,
                 'address' => $request->address,
-            ]);
+            ], InvoiceStaffStamp::attributePairForCreate()));
 
             if ($request->has('items')) {
                 foreach ($request->items as $item) {
@@ -145,9 +145,10 @@ class ServiceOrderController extends Controller
 
         // Fast update for just the source_type
         if ($request->has('quick_update') && $request->has('source_type')) {
-            $invoice->update([
-                'source_type' => $request->source_type
-            ]);
+            $invoice->update(array_merge([
+                'source_type' => $request->source_type,
+            ], InvoiceStaffStamp::attributePairForUpdate()));
+
             return redirect()->route('cashier.serviceorder.index')->with('success', 'Status updated!');
         }
 
@@ -183,7 +184,7 @@ class ServiceOrderController extends Controller
         }
 
         DB::transaction(function () use ($request, $invoice, $clientId, $vehicleId) {
-            $invoice->update([
+            $invoice->update(array_merge([
                 'client_id' => $clientId,
                 'vehicle_id' => $vehicleId,
                 'customer_name' => $request->customer_name,
@@ -200,7 +201,7 @@ class ServiceOrderController extends Controller
                 'payment_non_cash_amount' => $request->filled('payment_non_cash_amount') ? $request->payment_non_cash_amount : null,
                 'number' => $request->number,
                 'address' => $request->address,
-            ]);
+            ], InvoiceStaffStamp::attributePairForUpdate()));
 
             $invoice->items()->delete();
             if ($request->has('items')) {
@@ -251,18 +252,23 @@ class ServiceOrderController extends Controller
             'client',
             'vehicle',
             'items.part',
-            'jobs.technician'
+            'jobs.technician',
+            'createdByUser',
+            'lastProcessedByUser',
         ])->findOrFail($id);
 
         return view('cashier.service-order-view', compact('invoice'));
     }
+
     public function show($id)
     {
         $invoice = Invoice::with([
             'client',
             'vehicle',
             'items.part',
-            'jobs.technician'
+            'jobs.technician',
+            'createdByUser',
+            'lastProcessedByUser',
         ])->findOrFail($id);
 
         // This assumes you want to reuse the view for showing details
@@ -278,7 +284,7 @@ class ServiceOrderController extends Controller
         $query = Client::query()->select(['id', 'name', 'phone', 'address', 'email']);
 
         if ($search !== '') {
-            $like = '%' . addcslashes($search, '%_\\') . '%';
+            $like = '%'.addcslashes($search, '%_\\').'%';
             $query->where(function ($w) use ($like) {
                 $w->where('name', 'like', $like)
                     ->orWhere('phone', 'like', $like)
@@ -312,6 +318,4 @@ class ServiceOrderController extends Controller
             ],
         ]);
     }
-
-
 }

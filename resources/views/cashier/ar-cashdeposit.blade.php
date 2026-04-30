@@ -3,8 +3,7 @@
 
 @section('content')
 @include('cashier.partials.cashier-flash-toast')
-<div class="container-fluid">
-    <h2 class="fw-bold mt-2 mb-4">A/R Collection & Cash Deposit</h2>
+<div class="container-fluid mt-2">
     <div class="row g-4">
         <!-- A/R Collection Section -->
         <div class="col-12 col-lg-6">
@@ -199,6 +198,7 @@
                                             <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editCashDepositModal{{ $cd->id }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
+                                            <button type="button" class="btn btn-danger btn-sm ar-deposit-delete-btn"
                                                 title="Delete" data-bs-toggle="modal"
                                                 data-bs-target="#arCashDepositDeleteModal"
                                                 data-delete-action="{{ route('cashier.ar-cashdeposit.destroyCashDeposit', $cd->id) }}"

@@ -55,8 +55,6 @@ body {
 </style>
 
 <div class="container mt-4">
-  <h2 class="mb-4 text-center">{{ isset($invoice) ? 'Edit Service Order' : 'Create Service Order' }}</h2>
-
   <form action="{{ isset($invoice) ? route('cashier.serviceorder.update', $invoice->id) : route('cashier.serviceorder.store') }}"
         method="POST" autocomplete="off">
     @csrf
@@ -370,12 +368,37 @@ function openEditModal(id, customer, vehicle, number, address, plate, model, yea
 <script>
 $(document).ready(function() {
     // Initialize Select2 for Client and Vehicle dropdowns
-    $('#client_id').select2({
+    var $soClientSel = $('#client_id');
+    function soClientSearchFld() {
+        try {
+            var s2 = $soClientSel.data('select2');
+            if (s2 && s2.dropdown && s2.dropdown.$dropdown && s2.dropdown.$dropdown.length) {
+                var $f = s2.dropdown.$dropdown.find('.select2-search__field');
+                if ($f.length) return $f;
+            }
+        } catch (e) {}
+        return $(document.body).find('.select2-container.select2-container--open .select2-search__field').first();
+    }
+
+    function soClientSearchWhenReady(doFn) {
+        var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        function tick() {
+            var $fld = soClientSearchFld();
+            if ($fld.length) return doFn($fld);
+            var elapsed = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - t0;
+            if (elapsed < 400) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(function () { requestAnimationFrame(tick); });
+    }
+
+    $soClientSel.select2({
     ajax: {
         url: '{{ route("cashier.serviceorder.ajax.clients") }}',
         dataType: 'json',
         delay: 250,
         data: function (params) {
+            var t = String(params.term || '').trim();
+            if (t) $soClientSel.data('clientAjaxSearchTerm', t);
             return {
                 q: params.term || '',
                 page: params.page || 1
@@ -428,16 +451,27 @@ $(document).ready(function() {
     allowClear: true
 });
 
-
-// Optional: auto-trigger search when opened
-$('#client_id').on('select2:open', function () {
-    $('.select2-search__field').trigger('input');
-});
+    /** Client: close on pick; reopen restores filter; open always loads list (minInput 0) */
+    $soClientSel.on('select2:closing', function () {
+        var $fld = soClientSearchFld();
+        if (!$fld.length) return;
+        var v = String($fld.val() || '').trim();
+        if (v) $soClientSel.data('clientAjaxSearchTerm', v);
+    }).on('select2:open', function () {
+        var term = $soClientSel.data('clientAjaxSearchTerm');
+        soClientSearchWhenReady(function ($fld) {
+            if (term) $fld.val(term);
+            $fld.trigger('input');
+        });
+    }).on('select2:clear', function () {
+        $soClientSel.removeData('clientAjaxSearchTerm');
+    });
 
 
     $('#vehicle_id').select2({
         placeholder: '— walk-in or choose —',
         allowClear: true,
+        closeOnSelect: false,
         ajax: {
             url: '{{ route("cashier.ajax.vehicles") }}',
             dataType: 'json',

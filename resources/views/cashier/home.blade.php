@@ -97,7 +97,7 @@
         .dashboard-overview-head {
             display: flex;
             flex-wrap: wrap;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: flex-end;
             gap: 1rem;
             margin-bottom: 0.5rem;
@@ -117,25 +117,9 @@
             color: #555;
         }
 
-        .dashboard-range-hint {
-            font-size: 0.9rem;
-            color: #6c757d;
-            margin: 0 0 4px 0;
-        }
     </style>
 
     <div class="dashboard-overview-head">
-        <div>
-            <h2 class="mb-1">Dashboard Overview</h2>
-            <p class="dashboard-range-hint">
-                @if(($period ?? 'all') === 'all')
-                    Counts show <strong>all time</strong>.
-                @else
-                    <strong>{{ $rangeLabel ?? '' }}</strong> —
-                    Quotation, invoicing, history, inventory &amp; service orders use <strong>created date</strong> in range. Appointment count &amp; calendar use <strong>appointment date</strong> in range.
-                @endif
-            </p>
-        </div>
         <form method="get" action="{{ route('cashier.dashboard') }}" class="dashboard-filter-form" aria-label="Dashboard date filter">
             <div>
                 <label for="dash_period" class="form-label fw-semibold">Period</label>

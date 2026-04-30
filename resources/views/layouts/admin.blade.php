@@ -5,7 +5,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{{ config('app.name', 'Auto Service Dashboard') }}</title>
+  <title>
+    @hasSection('title')
+    @yield('title') — {{ config('app.name') }}
+    @else
+    {{ config('app.name') }}
+    @endif
+  </title>
+  <link rel="icon" href="{{ asset('images/logo.png') }}" type="image/png">
   <!-- Icons & CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -23,11 +30,41 @@
       background: #1c1f26;
       box-shadow: 4px 0 10px rgba(0,0,0,0.2);
       color: #fff;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       z-index: 1051;
       left: 0;
       top: 0;
       transition: transform 0.25s;
+    }
+    .sidebar-links {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sidebar-footer {
+      flex-shrink: 0;
+      padding: 12px 16px 20px;
+      background: #1c1f26;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-user-block {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-user-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f8f9fa;
+      line-height: 1.3;
+    }
+    .sidebar-user-role {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 2px;
     }
     .sidebar .logo-container { text-align: center; padding: 25px 0 15px; }
     .sidebar .logo-container img {
@@ -146,10 +183,11 @@
   <div class="d-flex">
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-      <div class="logo-container">
+      <div class="logo-container flex-shrink-0">
         <img src="{{ asset('images/logo.png') }}" alt="Logo">
         <h4 class="mt-2">AZ Auto Zolutions</h4>
       </div>
+      <nav class="sidebar-links" aria-label="Main navigation">
       <a href="{{ route('admin.home') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
       <a href="{{ route('admin.sales-report') }}"><i class="fas fa-chart-line"></i> Sales Report</a>
       <a href="{{ route('admin.gross-sales-report') }}"><i class="fas fa-coins"></i> Gross Sales Report</a>
@@ -161,12 +199,16 @@
       <a href="{{ route('admin.material-summary') }}"><i class="fas fa-clipboard-list"></i> Material Summary</a>
       <a href="{{ route('admin.labor-summary') }}"><i class="fas fa-users"></i> Labor Summary</a>
       <a href="{{ route('admin.trends') }}"><i class="fas fa-chart-line"></i> Trends</a>
-      <form method="POST" action="{{ route('logout') }}" class="logout-btn">
+      </nav>
+      <div class="sidebar-footer">
+        @include('partials.sidebar-signed-in-user')
+        <form method="POST" action="{{ route('logout') }}">
         @csrf
         <button type="submit" class="btn btn-danger w-100">
           <i class="fas fa-sign-out-alt"></i> Logout
         </button>
       </form>
+      </div>
     </div>
     <!-- Main Content -->
     <div class="content w-100">

@@ -1,40 +1,37 @@
 <?php
 
-// database/seeders/UsersTableSeeder.php
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class UsersTableSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        $pwd = Hash::make('password123');
+        // Drop old demo rows from earlier seed revisions so Employees list matches roster below.
+        User::whereIn('email', ['cashier@az.com', 'andrei@az.com'])->delete();
 
-        // Cashier (updateOrCreate avoids duplicate-email errors when re-seeding)
-        User::updateOrCreate(
-            ['email' => 'cashier@az.com'],
-            ['name' => 'Diana', 'password' => $pwd, 'role' => 'cashier']
-        );
+        $cashierPassword = Hash::make('password123');
+        $adminPassword = Hash::make('az2026');
+
         User::updateOrCreate(
             ['email' => 'cashier1@az.com'],
-            ['name' => 'Grace', 'password' => $pwd, 'role' => 'cashier']
+            ['name' => 'Cashier 1', 'password' => $cashierPassword, 'role' => User::ROLE_CASHIER]
         );
         User::updateOrCreate(
             ['email' => 'cashier2@az.com'],
-            ['name' => 'Belmonte', 'password' => $pwd, 'role' => 'cashier']
+            ['name' => 'Cashier 2', 'password' => $cashierPassword, 'role' => User::ROLE_CASHIER]
         );
 
-        // Admin
         User::updateOrCreate(
             ['email' => 'admin@az.com'],
-            ['name' => 'Admin User', 'password' => $pwd, 'role' => 'admin']
+            ['name' => 'Admin', 'password' => $adminPassword, 'role' => User::ROLE_ADMIN]
         );
         User::updateOrCreate(
-            ['email' => 'andrei@az.com'],
-            ['name' => 'Andrei', 'password' => $pwd, 'role' => 'admin']
+            ['email' => 'adminbackup@az.com'],
+            ['name' => 'Admin Backup', 'password' => $adminPassword, 'role' => User::ROLE_ADMIN]
         );
     }
 }

@@ -1,5 +1,9 @@
 fields aded first in invoides for split payment
-
+ALTER TABLE invoices
+  ADD COLUMN payment_cash_amount DECIMAL(15,2) NULL DEFAULT NULL AFTER grand_total,
+  ADD COLUMN payment_non_cash_amount DECIMAL(15,2) NULL DEFAULT NULL AFTER payment_cash_amount,
+  ADD COLUMN cash_tender_amount DECIMAL(15,2) NULL DEFAULT NULL AFTER payment_non_cash_amount,
+  ADD COLUMN cash_change_amount DECIMAL(15,2) NULL DEFAULT NULL AFTER cash_tender_amount;
 
 -- 1) Add columns (adjust AFTER ... if you prefer a different position)
 ALTER TABLE `invoices`

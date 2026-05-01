@@ -186,14 +186,14 @@
     border-bottom: none !important;
     }
 
-    /* Green/yellow part dropdown — ONLY inside Items .inv-part-dd-wrap (not client/vehicle selects) */
+    /* Item dropdown theme: blue highlight, white list, neutral badges (scoped to Items only). */
     .inv-part-dd-wrap .select2-dropdown {
     z-index: 1060 !important;
     width: 100% !important;
     min-width: min(100%, 28rem);
-    border: 1px solid #bbf7d0;
+    border: 1px solid #ced4da;
     border-radius: 0.5rem;
-    box-shadow: 0 0.25rem 1rem rgba(22, 101, 52, 0.12);
+    box-shadow: 0 0.25rem 1rem rgba(33, 37, 41, 0.14);
     background: #ffffff;
     }
 
@@ -202,56 +202,63 @@
     font-weight: 500;
     padding: 0.2rem 0.5rem;
     border-radius: 0.35rem;
-    border: 1px solid #bbf7d0;
-    background: #ecfdf5;
-    color: #166534;
+    border: 1px solid #ced4da;
+    background: #f8f9fa;
+    color: #212529;
     }
 
     .inv-part-dd-wrap .inv-part-badge-pop {
-    border-color: #fde047;
-    background: #fef9c3;
-    color: #713f12;
+    border-color: #dee2e6;
+    background: #ffffff;
+    color: #6c757d;
     }
 
-    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted {
-    background-color: #d1fae5 !important;
-    color: #14532d !important;
+    .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+    background-color: #4a90e2 !important;
+    color: #ffffff !important;
     }
 
     .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-code {
-    color: #047857 !important;
+    color: #ffffff !important;
     font-weight: 650;
     }
 
     .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-title {
-    color: #064e3b !important;
+    color: #ffffff !important;
     }
 
     .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-badge-stk {
-    background: #ffffff !important;
-    border: 1px solid #4ade80 !important;
-    color: #14532d !important;
+    background: rgba(255, 255, 255, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    color: #ffffff !important;
     }
 
     .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .inv-part-badge-pop {
-    background: #fef08a !important;
-    border: 1px solid #eab308 !important;
-    color: #713f12 !important;
+    background: rgba(255, 255, 255, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
+    color: #ffffff !important;
     }
 
     .inv-part-dd-wrap .select2-container--default .select2-results__option--highlighted .badge {
-    background: #ffffff !important;
-    border: 1px solid #86efac !important;
-    color: #14532d !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    color: #ffffff !important;
     }
 
     .inv-part-dd-wrap .select2-search--dropdown .select2-search__field {
-    margin: 0.25rem 0.5rem 0.5rem;
+    margin: 0.35rem 0.5rem 0.65rem;
     width: calc(100% - 1rem) !important;
-    padding: 0.35rem 0.5rem;
-    border-radius: 0.4rem;
-    border: 1px solid #bbf7d0;
+    padding: 0.4rem 0.65rem;
+    border-radius: 0.375rem;
+    border: 1px solid #ced4da;
     background: #fff;
+    color: #212529;
+    }
+
+    .inv-part-dd-wrap .select2-search--dropdown .select2-search__field:focus {
+    border-color: #4a90e2;
+    outline: none;
+    box-shadow: 0 0 0 0.12rem rgba(74, 144, 226, 0.2);
     }
 
     .select2-container {
@@ -761,8 +768,8 @@
     <div class="manual-fields mt-2 d-none">
       <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" placeholder="Part Name">
       <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" placeholder="Serial #">
-      <input type="hidden" name="items[${idx}][manual_acquisition_price]" value="">
-      <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" placeholder="Selling ₱">
+      <input type="number" name="items[${idx}][manual_acquisition_price]" step="0.01" class="form-control form-control-sm mb-1" placeholder="Acquisition ₱">
+      <input type="number" name="items[${idx}][manual_selling_price]" step="0.01" class="form-control form-control-sm mb-1" placeholder="Selling ₱">
       <div class="d-flex gap-2">
       <button type="button" class="btn btn-sm btn-secondary cancel-manual">Cancel</button>
       <button type="button" class="btn btn-sm btn-success save-manual">Save</button>
@@ -927,14 +934,17 @@
       row.find('[name$="[quantity]"], [name$="[original_price]"]').on('input', recalc);
       row.find('.remove-btn').on('click', () => { row.remove(); reindexQuotationItemRows(); recalc(); });
       if (data?.manual_part_name) {
-        row.find('.manual-fields').removeClass('d-none');
         row.find('.input-group').addClass('d-none');
-        row.find('[name$="[manual_part_name]"]').val(data.manual_part_name);
-        row.find('[name$="[manual_serial_number]"]').val(data.manual_serial_number);
-        row.find('[name$="[manual_acquisition_price]"]').val(data.manual_acquisition_price);
-        row.find('[name$="[manual_selling_price]"]').val(data.manual_selling_price);
-        row.find('[name$="[acquisition_price]"]').val(data.manual_acquisition_price);
-        row.find('[name$="[original_price]"]').val(data.manual_selling_price);
+        const acqL = data.manual_acquisition_price ?? '';
+        const sellL = data.manual_selling_price ?? '';
+        row.find('[name$="[original_price]"]').val(sellL);
+        row.find('td.item-cell-part').first().html(`
+    <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${String(data.manual_part_name ?? '').replace(/"/g, '&quot;')}" placeholder="Part Name" readonly>
+    <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${String(data.manual_serial_number ?? '').replace(/"/g, '&quot;')}" placeholder="Serial #" readonly>
+    <input type="number" name="items[${idx}][manual_acquisition_price]" step="0.01" class="form-control form-control-sm mb-1" value="${acqL}" placeholder="Acquisition ₱" readonly>
+    <input type="hidden" name="items[${idx}][acquisition_price]" value="${acqL}">
+    <input type="number" name="items[${idx}][manual_selling_price]" step="0.01" class="form-control form-control-sm mb-1" value="${sellL}" placeholder="Selling ₱" readonly>
+    `);
       }
 
 
@@ -954,9 +964,9 @@
         row.find('td.item-cell-part').first().html(`
     <input type="text" name="items[${curIdx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${String(partName).replace(/"/g, '&quot;')}" placeholder="Part Name" readonly>
     <input type="text" name="items[${curIdx}][manual_serial_number]" class="form-control form-control-sm mb-1" value="${String(serial).replace(/"/g, '&quot;')}" placeholder="Serial #" readonly>
-    <input type="hidden" name="items[${curIdx}][manual_acquisition_price]" value="${acq}">
+    <input type="number" name="items[${curIdx}][manual_acquisition_price]" step="0.01" class="form-control form-control-sm mb-1" value="${acq}" placeholder="Acquisition ₱" readonly>
     <input type="hidden" name="items[${curIdx}][acquisition_price]" value="${acq}">
-    <input type="number" name="items[${curIdx}][manual_selling_price]" class="form-control form-control-sm mb-1" value="${sell}" placeholder="Selling ₱" readonly>
+    <input type="number" name="items[${curIdx}][manual_selling_price]" step="0.01" class="form-control form-control-sm mb-1" value="${sell}" placeholder="Selling ₱" readonly>
     `);
 
         recalc();

@@ -891,21 +891,6 @@
                   <a href="{{ route('cashier.invoice.edit', $h->id) }}?modal=1" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit Invoice">
                     <i class="bi bi-pencil-square"></i>
                   </a>
-                  @if(in_array($h->service_status, ['in_progress', 'done']))
-                    <form action="{{ route('cashier.invoice.update', $h->id) }}" method="POST" class="d-inline" id="invoice-quick-mark-{{ $h->id }}">
-                      @csrf @method('PUT')
-                      <input type="hidden" name="status" value="paid">
-                      <input type="hidden" name="service_status" value="{{ $h->service_status }}">
-                      <button type="button" class="btn btn-sm btn-primary js-invoice-quick-mark-paid"
-                        data-quick-form="invoice-quick-mark-{{ $h->id }}" data-bs-toggle="tooltip" title="Mark as Paid">
-                        <i class="bi bi-check2-circle"></i>
-                      </button>
-                    </form>
-                  @else
-                    <button type="button" class="btn btn-sm btn-secondary" disabled title="Service must be In Progress or Done">
-                      <i class="bi bi-check2-circle"></i>
-                    </button>
-                  @endif
                 </div>
               </td>
             </tr>
@@ -1274,8 +1259,8 @@
       <div class="manual-fields mt-2 d-none">
     <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" placeholder="Part Name">
     <input type="text" name="items[${idx}][manual_serial_number]" class="form-control form-control-sm mb-1" placeholder="Serial #">
-    <input type="number" name="items[${idx}][manual_acquisition_price]" class="form-control form-control-sm mb-1" placeholder="Acquisition ₱">
-    <input type="number" name="items[${idx}][manual_selling_price]" class="form-control form-control-sm mb-1" placeholder="Selling ₱">
+    <input type="number" name="items[${idx}][manual_acquisition_price]" step="0.01" class="form-control form-control-sm mb-1" placeholder="Acquisition ₱">
+    <input type="number" name="items[${idx}][manual_selling_price]" step="0.01" class="form-control form-control-sm mb-1" placeholder="Selling ₱">
     <div class="d-flex gap-2">
     <button type="button" class="btn btn-sm btn-secondary cancel-manual">Cancel</button>
     <button type="button" class="btn btn-sm btn-primary save-manual">Save</button>
@@ -1986,7 +1971,6 @@
 
     @if(!isset($invoice) || (($invoice->status ?? 'unpaid') !== 'paid'))
     $('#btnInvoiceMarkPaid').on('click', function () {
-      window.__pendingInvoiceMarkPaidFormId = null;
       var el = document.getElementById('invoiceConfirmPaymentModal');
       if (el) {
         bootstrap.Modal.getOrCreateInstance(el).show();
@@ -1995,18 +1979,6 @@
     @endif
     $('#invoiceConfirmPaymentOk').off('click.invMarkPaid').on('click.invMarkPaid', function () {
       var modalEl = document.getElementById('invoiceConfirmPaymentModal');
-      var pendingFormId = window.__pendingInvoiceMarkPaidFormId;
-      if (pendingFormId) {
-        window.__pendingInvoiceMarkPaidFormId = null;
-        var f = document.getElementById(pendingFormId);
-        var clo = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
-        if (clo) clo.hide();
-        // #region agent log
-        fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c4fe64'},body:JSON.stringify({sessionId:'c4fe64',location:'invoice.blade.php:quickMarkPaidConfirm',message:'submit quick mark paid form',data:{hypothesisId:'H_list_mark_paid',formId:String(pendingFormId)},timestamp:Date.now()})}).catch(function(){});
-        // #endregion
-        if (f && typeof f.submit === 'function') f.submit();
-        return;
-      }
       @if(!isset($invoice) || (($invoice->status ?? 'unpaid') !== 'paid'))
       var $sel = $('#invoiceForm').find('select[name="status"]');
       if (!$sel.length) {
@@ -2034,15 +2006,6 @@
         $(formEl).trigger('submit');
       }
       @endif
-    });
-    $(document).on('click', '.js-invoice-quick-mark-paid', function () {
-      var fid = $(this).data('quick-form');
-      if (!fid) return;
-      window.__pendingInvoiceMarkPaidFormId = String(fid);
-      var el = document.getElementById('invoiceConfirmPaymentModal');
-      if (el) {
-        bootstrap.Modal.getOrCreateInstance(el).show();
-      }
     });
 
     });

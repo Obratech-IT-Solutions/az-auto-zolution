@@ -25,6 +25,13 @@
 
     // Net Sales after any discount
     $net_sales = $total_sales - $invoice->total_discount;
+    $sourceType = strtolower((string) ($invoice->source_type ?? 'service_order'));
+    $documentTitle = [
+      'quotation' => 'QUOTATION',
+      'appointment' => 'APPOINTMENT',
+      'service_order' => 'SERVICE ORDER',
+      'invoicing' => 'SERVICE INVOICE',
+    ][$sourceType] ?? 'SERVICE ORDER';
 @endphp
 
 <style>
@@ -39,11 +46,10 @@
   .no-print, .no-print * { display:none!important; }
   @page { margin:0; size:A4; }
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:visible; }
-  .invoice-header-bar, .stripe-bar .stripe, .details-table .label,
-  .invoice-table th, .invoice-table tfoot tr td,
-  .labor-material-table th, .labor-material-table tfoot td,
-  .job-table th, .job-table tfoot td
-  { -webkit-print-color-adjust: exact!important; print-color-adjust: exact!important; }
+  #invoice-print, #invoice-print * {
+    -webkit-print-color-adjust: exact!important;
+    print-color-adjust: exact!important;
+  }
 }
 
 .invoice-main { border:1px solid #eee; background:#fff; max-width:900px; margin:0 auto; font-size:15px; overflow:hidden; }
@@ -53,7 +59,7 @@
   justify-content: space-between;
   align-items: center;
   height: 100px;           /* Set a fixed height */
-  padding: 0 24px;        /* Remove top/bottom padding */
+  padding: 0 20px;        /* Remove top/bottom padding */
   overflow: hidden;       /* Cut off overflow (if any) */
 }
 .invoice-header-bar .logo {
@@ -66,21 +72,21 @@
 .stripe.red   { background:#E40000; }
 .stripe.green { background:#008000; }
 .stripe.black { background:#000; }
-.company-info { padding:16px 24px; font-family:Arial,sans-serif; }
+.company-info { padding:16px 20px; font-family:Arial,sans-serif; }
 .company-info h2 { margin:0; font-size:1.5rem; font-weight:bold; }
 .company-info em { display:block; margin-bottom:8px; font-style:italic; }
 .company-info p { margin:2px 0; line-height:1.3; }
 .details-section { display:grid; grid-template-columns:2fr 1fr; gap:16px; padding:0 20px 20px;}
-.details-table, .right-details-table { width:100%; border-collapse:collapse; }
+.details-table, .right-details-table { width:100%; border-collapse:collapse; table-layout:fixed; }
 .details-table td, .right-details-table td { padding:4px 10px; border:1px solid #c5c5c5; background:#f9f9f9; font-size:0.8rem; }
 .details-table .label { background:#FFD71A; font-weight:bold; text-transform:uppercase; width:35%; }
 .right-details-table td:first-child { background:#FFD71A; text-align:left; font-weight:bold; }
 .right-details-table td:last-child { text-align:right; }
 .right-details-table .invoice-no { color:#E40000; font-size:0.8rem; }
 
-/* Tables */
+/* Tables — aligned column grid */
 .invoice-table, .labor-material-table, .job-table, .totals-table {
-  width: 95%; margin: 20px auto 0; border-collapse: collapse;
+  width: calc(100% - 40px); margin: 20px 20px 0; border-collapse: collapse; table-layout: fixed;
 }
 .invoice-table th, .invoice-table td,
 .labor-material-table th, .labor-material-table td,
@@ -92,10 +98,11 @@
 }
 .invoice-table th:nth-child(3), .invoice-table td:nth-child(3),
 .invoice-table th:nth-child(4), .invoice-table td:nth-child(4),
-.labor-material-table th:nth-child(3), .labor-material-table td:nth-child(3),
-.labor-material-table th:nth-child(4), .labor-material-table td:nth-child(4),
 .job-table th:nth-child(3), .job-table td:nth-child(3),
 .job-table th:nth-child(4), .job-table td:nth-child(4) {
+  text-align:right!important;
+}
+.labor-material-table th:nth-child(4), .labor-material-table td:nth-child(4) {
   text-align:right!important;
 }
 .labor-material-table tfoot td, .job-table tfoot td {
@@ -104,7 +111,6 @@
 .totals-table td { padding:4px 8px; font-size:0.8rem; }
 .totals-table td:first-child { text-align:left; }
 .totals-table td:last-child  { text-align:right; }
-.signature { text-align:center; margin-top:10px; font-weight:bold; }
 </style>
 
 <div class="container mt-4">
@@ -117,7 +123,7 @@
     {{-- HEADER --}}
     <div class="invoice-header-bar">
       <img src="{{ asset('images/logo-print.png') }}" class="logo" alt="AZ Zolutions Logo">
-      <h1>SERVICE ORDER</h1>
+      <h1>{{ $documentTitle }}</h1>
     </div>
 
     {{-- COLOR STRIPES --}}
@@ -176,6 +182,7 @@
 
     {{-- ITEMS --}}
     <table class="invoice-table">
+      @include('partials.invoice-print-four-colgroup')
       <thead>
         <tr>
           <th>Quantity</th>
@@ -205,6 +212,7 @@
 
     {{-- LABOR MATERIALS (yellow, single row) --}}
     <table class="labor-material-table">
+      @include('partials.invoice-print-four-colgroup')
       <tr>
         <th colspan="2">Labor</th>
         <th>Total Material</th>
@@ -222,6 +230,7 @@
 
     {{-- Job Table and totals --}}
     <table class="job-table">
+      @include('partials.invoice-print-four-colgroup')
       <tr>
   <td colspan="2"></td>
   <td><strong>Total Sales</strong></td>
@@ -245,11 +254,14 @@
 
     </table>
 
-    {{-- Client’s name centered --}}
-    <div class="text-center mt-4">
-      <strong>{{ strtoupper($invoice->resolvedCustomerName()) }}</strong>
-    </div>
-    <div class="signature">CUSTOMER NAME & SIGNATURE</div>
+    <footer class="invoice-print-footer">
+      <div class="invoice-print-footer-balance" aria-hidden="true"></div>
+      <div class="invoice-print-footer-main">
+        <div class="customer-print-name">{{ strtoupper($invoice->resolvedCustomerName()) }}</div>
+        <div class="signature">CUSTOMER NAME & SIGNATURE</div>
+      </div>
+      @include('partials.invoice-print-obratech-brand')
+    </footer>
   </div>
 </div>
 

@@ -195,6 +195,7 @@ body {
                 <td class="d-flex gap-2">
   <button type="button" class="btn btn-sm btn-outline-danger service-order-delete-btn" title="Delete"
     data-bs-toggle="modal" data-bs-target="#serviceOrderDeleteModal"
+    data-item-label="{{ $h->customer_display }} / {{ $h->vehicle_display }}"
     data-delete-action="{{ route('cashier.serviceorder.destroy', $h->id) }}">
     <i class="bi bi-trash"></i>
   </button>
@@ -236,6 +237,36 @@ body {
           </tbody>
         </table>
       @endif
+    </div>
+  </div>
+</div>
+
+<form id="serviceOrderDeleteForm" method="POST" class="d-none" action="">
+  @csrf
+  @method('DELETE')
+</form>
+
+<div class="modal fade" id="serviceOrderDeleteModal" tabindex="-1" aria-labelledby="serviceOrderDeleteModalTitle"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-danger overflow-hidden shadow">
+      <div class="modal-header bg-danger text-white border-0 rounded-0">
+        <h5 class="modal-title d-flex align-items-center gap-2" id="serviceOrderDeleteModalTitle">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>Delete service order?</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1 text-body">This will permanently remove this service order from the list.</p>
+        <p class="mb-0 small text-muted" id="serviceOrderDeleteModalMsg">This cannot be undone.</p>
+      </div>
+      <div class="modal-footer bg-light border-top">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="serviceOrderDeleteConfirmBtn">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -325,11 +356,16 @@ body {
 (function () {
   var modalEl = document.getElementById('serviceOrderDeleteModal');
   var formEl = document.getElementById('serviceOrderDeleteForm');
+  var msgEl = document.getElementById('serviceOrderDeleteModalMsg');
   if (modalEl && formEl) {
     modalEl.addEventListener('show.bs.modal', function (event) {
       var btn = event.relatedTarget;
       if (!btn) return;
       formEl.setAttribute('action', btn.getAttribute('data-delete-action') || '');
+      if (msgEl) {
+        var label = btn.getAttribute('data-item-label') || 'this service order';
+        msgEl.textContent = label + ' will be deleted. This cannot be undone.';
+      }
     });
     var confirmBtn = document.getElementById('serviceOrderDeleteConfirmBtn');
     if (confirmBtn) {

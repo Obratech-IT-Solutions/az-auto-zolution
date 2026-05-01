@@ -17,6 +17,13 @@
     $vat_amount = $discounted_total - $net_of_vat;
 
     $net_sales = $discounted_total;
+    $sourceType = strtolower((string) ($invoice->source_type ?? 'quotation'));
+    $documentTitle = [
+      'quotation' => 'QUOTATION',
+      'appointment' => 'APPOINTMENT',
+      'service_order' => 'SERVICE ORDER',
+      'invoicing' => 'SERVICE INVOICE',
+    ][$sourceType] ?? 'QUOTATION';
     @endphp
 
 
@@ -66,15 +73,8 @@
       overflow: visible;
     }
 
-    .invoice-header-bar,
-    .stripe-bar .stripe,
-    .details-table .label,
-    .invoice-table th,
-    .invoice-table tfoot tr td,
-    .labor-material-table th,
-    .labor-material-table tfoot td,
-    .job-table th,
-    .job-table tfoot td {
+    #invoice-print,
+    #invoice-print * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
@@ -96,7 +96,7 @@
     align-items: center;
     height: 100px;
     /* Set a fixed height */
-    padding: 0 24px;
+    padding: 0 20px;
     /* Remove top/bottom padding */
     overflow: hidden;
     /* Cut off overflow (if any) */
@@ -135,7 +135,7 @@
     }
 
     .company-info {
-    padding: 16px 24px;
+    padding: 16px 20px;
     font-family: Arial, sans-serif;
     }
 
@@ -167,6 +167,7 @@
     .right-details-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
     }
 
     .details-table td,
@@ -204,9 +205,10 @@
     .labor-material-table,
     .job-table,
     .totals-table {
-    width: 95%;
-    margin: 20px auto 0;
+    width: calc(100% - 40px);
+    margin: 20px 20px 0;
     border-collapse: collapse;
+    table-layout: fixed;
     }
 
     .invoice-table th,
@@ -232,14 +234,15 @@
     .invoice-table td:nth-child(3),
     .invoice-table th:nth-child(4),
     .invoice-table td:nth-child(4),
-    .labor-material-table th:nth-child(3),
-    .labor-material-table td:nth-child(3),
-    .labor-material-table th:nth-child(4),
-    .labor-material-table td:nth-child(4),
     .job-table th:nth-child(3),
     .job-table td:nth-child(3),
     .job-table th:nth-child(4),
     .job-table td:nth-child(4) {
+    text-align: right !important;
+    }
+
+    .labor-material-table th:nth-child(4),
+    .labor-material-table td:nth-child(4) {
     text-align: right !important;
     }
 
@@ -262,11 +265,6 @@
     text-align: right;
     }
 
-    .signature {
-    text-align: center;
-    margin-top: 10px;
-    font-weight: bold;
-    }
   </style>
 
   <div class="container mt-4">
@@ -279,7 +277,7 @@
     {{-- HEADER --}}
     <div class="invoice-header-bar">
       <img src="{{ asset('images/logo-print.png') }}" class="logo" alt="AZ Zolutions Logo">
-      <h1>SERVICE QUOTE</h1>
+      <h1>{{ $documentTitle }}</h1>
     </div>
 
     {{-- COLOR STRIPES --}}
@@ -365,6 +363,7 @@
 
     {{-- ITEMS --}}
     <table class="invoice-table">
+      @include('partials.invoice-print-four-colgroup')
       <thead>
       <tr>
         <th>Quantity</th>
@@ -409,12 +408,14 @@
       </tbody>
     </table>
 
-    {{-- LABOR --}}
+    {{-- LABOR — 4 cols match materials / totals --}}
     <table class="labor-material-table">
+      @include('partials.invoice-print-four-colgroup')
       <thead>
       <tr>
         <th>Technician</th>
         <th>Job Description</th>
+        <th></th>
         <th>Total</th>
       </tr>
       </thead>
@@ -423,12 +424,13 @@
       <tr>
       <td>{{ strtoupper($job->technician->name ?? '-') }}</td>
       <td>{{ $job->job_description }}</td>
-      <td style="text-align:right;">{{ $job->total ? '₱' . number_format($job->total, 2) : '' }}</td>
+      <td></td>
+      <td>{{ $job->total ? '₱' . number_format($job->total, 2) : '' }}</td>
       </tr>
     @endforeach
       {{-- Total Labor --}}
       <tr>
-        <td colspan="2" style="text-align:right;font-weight:bold;background:#FFD71A;">Total Labor</td>
+        <td colspan="3" style="text-align:right;font-weight:bold;background:#FFD71A;">Total Labor</td>
         <td style="background:#FFD71A;font-weight:bold;text-align:right;">
         ₱{{ number_format($labor_total, 2) }}
         </td>
@@ -439,6 +441,7 @@
 
     {{-- Job Table and totals --}}
     <table class="job-table">
+      @include('partials.invoice-print-four-colgroup')
       <tr>
       <td colspan="2"></td>
       <td><strong>Gross Sales</strong></td>
@@ -466,11 +469,14 @@
       </tr>
     </table>
 
-    {{-- Client’s name centered --}}
-    <div class="text-center mt-4">
-      <strong>{{ strtoupper($invoice->resolvedCustomerName()) }}</strong>
-    </div>
-    <div class="signature">CUSTOMER NAME & SIGNATURE</div>
+    <footer class="invoice-print-footer">
+      <div class="invoice-print-footer-balance" aria-hidden="true"></div>
+      <div class="invoice-print-footer-main">
+        <div class="customer-print-name">{{ strtoupper($invoice->resolvedCustomerName()) }}</div>
+        <div class="signature">CUSTOMER NAME & SIGNATURE</div>
+      </div>
+      @include('partials.invoice-print-obratech-brand')
+    </footer>
     </div>
   </div>
 

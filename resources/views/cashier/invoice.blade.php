@@ -1227,6 +1227,14 @@
     });
 
 
+    function formatEditableAmount(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '';
+      const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
+      if (Math.abs(rounded % 1) < 1e-9) return String(Math.trunc(rounded));
+      return rounded.toFixed(2).replace(/\.?0+$/, '');
+    }
+
     // Item row with select2 and correct price autopopulate!
     // ─── Item row with Manual‐toggle + select2 autopopulate ───
     // ─── Item row with Manual-popup + Select2 autopopulate ───
@@ -1234,10 +1242,10 @@
     const idx = $('#items-table tbody tr').length;
     const partId = data?.part_id || '';
     const qty = data?.quantity || 1;
-    const price = data?.original_price || '';
+    const price = formatEditableAmount(data?.original_price ?? '');
 
 
-    const lineTotal = (qty && price) ? (qty * price).toFixed(2) : '0.00';
+    const lineTotal = formatEditableAmount((qty && price) ? (qty * price) : 0);
 
     const row = $(`<tr>
     <td class="inv-item-drag align-middle text-center">
@@ -1276,7 +1284,7 @@
       <input type="hidden" name="items[${idx}][original_price]" value="${price}">
     </td>
 
-    <td class="inv-col-discount inv-col-money"><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.discount_value || ''}"></td>
+    <td class="inv-col-discount inv-col-money"><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${formatEditableAmount(data?.discount_value ?? '')}"></td>
 
     <td class="col-line-total inv-col-linetotal text-end"><span class="line-total-amount">${lineTotal}</span></td>
     <td class="inv-col-actions"><button type="button" class="btn btn-sm btn-outline-dark remove-btn" title="Remove row">✕</button></td>
@@ -1333,7 +1341,7 @@
       if (pre) {
         var opt = new Option(pre.text, String(pre.id), true, true);
         $sel.append(opt).trigger('change');
-        row.find('[name$="[price]"]').val(Number(pre.price).toFixed(2));
+        row.find('[name$="[price]"]').val(formatEditableAmount(pre.price));
         row.find('[name$="[original_price]"]').val(Number(pre.price).toFixed(2));
         row.find('[name$="[acquisition_price]"]').val(Number(pre.acquisition).toFixed(2));
       } else {
@@ -1349,7 +1357,7 @@
       }
       const price = e.params.data.price || 0;
       const acquisitionPrice = e.params.data.acquisition_price || 0;
-      row.find('[name$="[price]"]').val(price.toFixed(2));
+      row.find('[name$="[price]"]').val(formatEditableAmount(price));
       row.find('[name$="[original_price]"]').val(price.toFixed(2));
       row.find('[name$="[acquisition_price]"]').val(acquisitionPrice.toFixed(2));
       row.find('[name$="[quantity]"]').val(1);
@@ -1357,8 +1365,13 @@
     })
 
 
-    // qty/price inputs → recalc
-    row.find('[name$="[quantity]"], [name$="[price]"], [name$="[discount_value]"]').on('input', recalc);
+    // qty/price inputs → keep posted original_price in sync with edited price, then recalc
+    row.find('[name$="[price]"]').on('input', function () {
+      const currentPrice = parseFloat($(this).val());
+      row.find('[name$="[original_price]"]').val(Number.isFinite(currentPrice) ? currentPrice.toFixed(2) : '');
+      recalc();
+    });
+    row.find('[name$="[quantity]"], [name$="[discount_value]"]').on('input', recalc);
 
 
 
@@ -1381,7 +1394,7 @@
       const acq = parseFloat(row.find('[name$="[manual_acquisition_price]"]').val()) || 0;
       const sell = parseFloat(row.find('[name$="[manual_selling_price]"]').val()) || 0;
 
-      row.find('[name$="[price]"]').val(sell.toFixed(2));
+      row.find('[name$="[price]"]').val(formatEditableAmount(sell));
       row.find('[name$="[original_price]"]').val(sell.toFixed(2));
       row.find('[name$="[quantity]"]').val(1);
       row.find('[name$="[acquisition_price]"]').val(acq.toFixed(2));
@@ -1406,7 +1419,7 @@
       row.find('[name$="[manual_selling_price]"]').val(data.manual_selling_price);
 
       row.find('[name$="[acquisition_price]"]').val(data.manual_acquisition_price);
-      row.find('[name$="[price]"]').val(data.manual_selling_price);
+      row.find('[name$="[price]"]').val(formatEditableAmount(data.manual_selling_price));
 
       row.find('td.inv-item-cell').first().html(`
     <input type="text" name="items[${idx}][manual_part_name]" class="form-control form-control-sm mb-1" value="${String(data.manual_part_name ?? '').replace(/"/g, '&quot;')}" readonly>
@@ -1500,7 +1513,7 @@
 
       itemsTotal += lineTotal;
 
-      $r.find('.line-total-amount').text(lineTotal.toFixed(2));
+      $r.find('.line-total-amount').text(formatEditableAmount(lineTotal));
     });
 
     // Calculate jobs total
@@ -1515,9 +1528,9 @@
     const vatAmount = netAfterDisc * (0.12 / 1.12);
 
     // Set values back
-    $('[name="subtotal"]').val(subtotal.toFixed(2));
-    $('[name="vat_amount"]').val(vatAmount.toFixed(2));
-    $('[name="grand_total"]').val(netAfterDisc.toFixed(2));
+    $('[name="subtotal"]').val(formatEditableAmount(subtotal));
+    $('[name="vat_amount"]').val(formatEditableAmount(vatAmount));
+    $('[name="grand_total"]').val(formatEditableAmount(netAfterDisc));
     syncPaymentPanel();
     }
 
@@ -1530,8 +1543,8 @@
         const gt = parseFloat($('[name="grand_total"]').val()) || 0;
         const totalCollected = pc + pn;
         const ch = Math.max(0, totalCollected - gt);
-        $('#cash_change_amount').val(totalCollected > 0 ? ch.toFixed(2) : '');
-        $('#cash_tender_amount').val((pc + ch).toFixed(2));
+        $('#cash_change_amount').val(totalCollected > 0 ? formatEditableAmount(ch) : '');
+        $('#cash_tender_amount').val(formatEditableAmount(pc + ch));
         // #region agent log
         fetch('http://127.0.0.1:7254/ingest/923754be-f957-4771-807a-8b9e06c373ec', {
           method: 'POST',
@@ -1559,7 +1572,7 @@
         if (t !== '' && t !== null) {
           const tender = parseFloat(t);
           if (!isNaN(tender)) {
-            $('#cash_change_amount').val(Math.max(0, tender - pc).toFixed(2));
+            $('#cash_change_amount').val(formatEditableAmount(Math.max(0, tender - pc)));
           }
         }
       }
@@ -1569,7 +1582,7 @@
         if (cl !== '' && cl !== null) {
           const c = parseFloat(cl);
           if (!isNaN(c)) {
-            $('#cashless_variance_display').val((c - pn).toFixed(2));
+            $('#cashless_variance_display').val(formatEditableAmount(c - pn));
           }
         } else {
           $('#cashless_variance_display').val('');
@@ -1674,7 +1687,7 @@
         && inv.cash_tender_amount != null && inv.cash_tender_amount !== '' && pc != null && !isNaN(pc)) {
         const tn = parseFloat(inv.cash_tender_amount);
         if (!isNaN(tn)) {
-          $('#cash_change_amount').val(Math.max(0, tn - pc).toFixed(2));
+          $('#cash_change_amount').val(formatEditableAmount(Math.max(0, tn - pc)));
         }
       }
       if (mode === 'split') {
@@ -1729,15 +1742,15 @@
     function syncPaymentPanel() {
       rebuildPaymentTypeSelect();
       const gt = parseFloat($('[name="grand_total"]').val()) || 0;
-      $('#payment_total_display').val(gt.toFixed(2));
+      $('#payment_total_display').val(formatEditableAmount(gt));
       const mode = $('#payment_mode').val();
       if (mode === 'cash_only') {
-        $('#payment_cash_amount').val(gt.toFixed(2));
+        $('#payment_cash_amount').val(formatEditableAmount(gt));
         $('#payment_non_cash_amount').val('0.00');
         $('#payment_type').val('cash');
       } else if (mode === 'cashless_only') {
         $('#payment_cash_amount').val('0.00');
-        $('#payment_non_cash_amount').val(gt.toFixed(2));
+        $('#payment_non_cash_amount').val(formatEditableAmount(gt));
         var pt = $('#payment_type').val();
         if (!pt || pt === 'cash') $('#payment_type').val('gcash');
       } else if (mode === 'split') {
@@ -1836,10 +1849,10 @@
       inferPaymentMode(invoice);
       if ($('#payment_mode').val() === 'split') {
         if (invoice.payment_cash_amount != null && invoice.payment_cash_amount !== '') {
-          $('#payment_cash_amount').val(parseFloat(invoice.payment_cash_amount).toFixed(2));
+          $('#payment_cash_amount').val(formatEditableAmount(invoice.payment_cash_amount));
         }
         if (invoice.payment_non_cash_amount != null && invoice.payment_non_cash_amount !== '') {
-          $('#payment_non_cash_amount').val(parseFloat(invoice.payment_non_cash_amount).toFixed(2));
+          $('#payment_non_cash_amount').val(formatEditableAmount(invoice.payment_non_cash_amount));
         }
       }
       updateChangeFromTender();

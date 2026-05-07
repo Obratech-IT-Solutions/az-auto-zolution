@@ -172,7 +172,7 @@ class InvoiceController extends Controller
 
             if ($request->has('items')) {
                 foreach ($request->items as $item) {
-                    $original = $item['original_price'] ?? $item['price'] ?? $item['manual_selling_price'] ?? 0;
+                    $original = $item['price'] ?? $item['original_price'] ?? $item['manual_selling_price'] ?? 0;
 
                     $discount = $item['discount_value'] ?? 0;
                     $effective = $original - $discount;
@@ -344,7 +344,7 @@ class InvoiceController extends Controller
             $invoice->items()->delete();
             if ($request->has('items')) {
                 foreach ($request->items as $item) {
-                    $original = $item['original_price'] ?? $item['price'] ?? $item['manual_selling_price'] ?? 0;
+                    $original = $item['price'] ?? $item['original_price'] ?? $item['manual_selling_price'] ?? 0;
 
                     $discount = $item['discount_value'] ?? 0;
                     $effective = $original - $discount;

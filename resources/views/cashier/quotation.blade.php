@@ -714,6 +714,14 @@
       $('#odometer').val(v.odometer || '');
     });
 
+    function formatEditableAmount(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '';
+      const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
+      if (Math.abs(rounded % 1) < 1e-9) return String(Math.trunc(rounded));
+      return rounded.toFixed(2).replace(/\.?0+$/, '');
+    }
+
     function reindexQuotationItemRows() {
       $('#items-table tbody tr').each(function (newIdx) {
         $(this).find('[name]').each(function () {
@@ -747,8 +755,8 @@
       const idx = $('#items-table tbody tr').length;
       const partId = data?.part_id || '';
       const qty = data?.quantity || 1;
-      const orig = data?.original_price ?? '';
-      const lineTotal = (orig && qty) ? (orig * qty).toFixed(2) : '0.00';
+      const orig = formatEditableAmount(data?.original_price ?? '');
+      const lineTotal = formatEditableAmount((orig && qty) ? (orig * qty) : 0);
 
       const row = $(`
     <tr>
@@ -780,7 +788,7 @@
     </td>
     <td><input name="items[${idx}][quantity]" type="number" class="form-control form-control-sm" value="${qty}"></td>
     <td><input name="items[${idx}][original_price]" type="number" step="0.01" class="form-control form-control-sm" value="${orig}"></td>
-    <td><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${data?.discount_value || ''}"></td>
+    <td><input name="items[${idx}][discount_value]" type="number" step="0.01" class="form-control form-control-sm" value="${formatEditableAmount(data?.discount_value ?? '')}"></td>
     <td class="col-line-total text-end"><span class="line-total-amount">${lineTotal}</span><input type="hidden" name="items[${idx}][discounted_price]" value="0.00"></td>
     <td><button type="button" class="btn btn-sm btn-danger remove-btn">✕</button></td>
     </tr>`);
@@ -901,7 +909,7 @@
             $partSelect.data('invPartAjaxSearchTerm', String($fldSel.val() || '').trim());
           }
           const d = e.params.data;
-          row.find('[name$="[original_price]"]').val(Number(d.price || 0).toFixed(2));
+          row.find('[name$="[original_price]"]').val(formatEditableAmount(d.price || 0));
           row.find('[name$="[acquisition_price]"]').val(Number(d.acquisition || 0).toFixed(2));
           row.find('[name$="[quantity]"]').val(1);
           recalc();
@@ -923,7 +931,7 @@
         }
         $partSelect.trigger('change');
         if (pre) {
-          row.find('[name$="[original_price]"]').val(Number(pre.price).toFixed(2));
+          row.find('[name$="[original_price]"]').val(formatEditableAmount(pre.price));
           row.find('[name$="[acquisition_price]"]').val(Number(pre.acquisition).toFixed(2));
         }
       }
@@ -957,7 +965,7 @@
         const sell = parseFloat(row.find('[name$="[manual_selling_price]"]').val()) || 0;
         const acq = parseFloat(row.find('[name$="[manual_acquisition_price]"]').val()) || 0;
 
-        row.find('[name$="[original_price]"]').val(sell.toFixed(2));
+        row.find('[name$="[original_price]"]').val(formatEditableAmount(sell));
         row.find('[name$="[quantity]"]').val(1);
         row.find('[name$="[acquisition_price]"]').val(acq.toFixed(2));
 
@@ -1005,7 +1013,7 @@
       const t = q * p;
       itemsTotal += t;
       $(this).find('[name$="[discounted_price]"]').val(t.toFixed(2)); // set discounted_price = line_total
-      $(this).find('.line-total-amount').text(t.toFixed(2));
+      $(this).find('.line-total-amount').text(formatEditableAmount(t));
 
 
 
@@ -1017,9 +1025,9 @@
       const discount = +$('[name="total_discount"]').val() || 0;
       const grand = subtotal - discount;
       const vat = grand * (0.12 / 1.12);
-      $('[name=subtotal]').val(subtotal.toFixed(2));
-      $('[name=vat_amount]').val(vat.toFixed(2));
-      $('[name=grand_total]').val(grand.toFixed(2));
+      $('[name=subtotal]').val(formatEditableAmount(subtotal));
+      $('[name=vat_amount]').val(formatEditableAmount(vat));
+      $('[name=grand_total]').val(formatEditableAmount(grand));
     }
 
 

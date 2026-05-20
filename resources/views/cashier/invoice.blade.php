@@ -429,6 +429,14 @@
     }
   </style>
 
+  @include('cashier.partials.cashier-flash-toast')
+  @if(session('warning'))
+  <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+    {{ session('warning') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  @endif
+
   {{-- Full width of .content (no .container): a centered .container made the CTA look "floating" vs full-width tables below --}}
   <div class="mt-4 mb-3 text-end">
     <div class="invoice-page-toolbar d-inline-flex flex-wrap align-items-center justify-content-end gap-2">
@@ -453,6 +461,12 @@
       @if(session('success'))
       <div class="alert alert-primary alert-dismissible fade show border-0 shadow-sm" role="alert" style="background: rgba(74, 144, 226, 0.15); color: #0f172a;">
       {{ session('success') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    @endif
+      @if(session('warning'))
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+      {{ session('warning') }}
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     @endif
@@ -651,6 +665,13 @@
           Jobs
         </div>
         <div class="card-body p-3">
+          <datalist id="job-description-presets">
+            <option value="Change Oil">
+            <option value="Tune Up">
+            <option value="Brake Service">
+            <option value="Wheel Alignment">
+            <option value="General Checkup">
+          </datalist>
           <table class="table table-bordered" id="jobs-table">
           <thead>
             <tr>
@@ -664,6 +685,7 @@
           <tfoot>
             <tr>
             <td colspan="4" class="text-end">
+              <button type="button" id="add-change-oil" class="btn btn-sm btn-outline-primary me-1">+ Change Oil</button>
               <button type="button" id="add-job" class="btn btn-sm btn-primary">+ Add Job</button>
             </td>
             </tr>
@@ -1476,7 +1498,7 @@
     const techId = data && data.technician_id ? data.technician_id : '';
     const total = data && data.total ? data.total : '';
     const row = $(`<tr>
-      <td class="text-center align-middle"><input name="jobs[${idx}][job_description]" class="form-control form-control-sm" value="${desc}"></td>
+      <td class="text-center align-middle"><input name="jobs[${idx}][job_description]" list="job-description-presets" class="form-control form-control-sm" value="${desc}"></td>
       <td class="text-center align-middle">
       <select name="jobs[${idx}][technician_id]" class="form-select form-select-sm">
       <option value="">-- select tech --</option>
@@ -1803,6 +1825,7 @@
     // INIT: Create and Edit Logic
     $('#add-item').on('click', () => addItemRow());
     $('#add-job').on('click', () => addJobRow());
+    $('#add-change-oil').on('click', () => addJobRow({ job_description: 'Change Oil' }));
 
     // If editing, populate items/jobs; if not, start blank row
     function populateForm(invoice) {

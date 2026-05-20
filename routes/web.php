@@ -18,6 +18,7 @@ use App\Http\Controllers\Cashier\QuotationController;
 use App\Http\Controllers\Cashier\ServiceOrderController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\SmsController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\User;
@@ -132,6 +133,11 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('technician/{id}', [EmailEmployeeController::class, 'updateTechnician'])->name('technician.update');
         Route::delete('user/{id}', [EmailEmployeeController::class, 'destroyUser'])->name('user.delete');
         Route::delete('technician/{id}', [EmailEmployeeController::class, 'destroyTechnician'])->name('technician.delete');
+
+        Route::get('sms', [SmsController::class, 'index'])->name('sms.index');
+        Route::put('sms/settings', [SmsController::class, 'updateSettings'])->name('sms.settings');
+        Route::post('sms/send', [SmsController::class, 'sendManual'])->name('sms.send');
+        Route::post('sms/reminders/{id}/send', [SmsController::class, 'sendReminderNow'])->name('sms.reminder.send');
 
     });
 /*
@@ -265,5 +271,10 @@ Route::middleware(['auth', 'role:cashier'])
         Route::post('ar-cashdeposit/store-cashdeposit', [ARCashDepositController::class, 'storeCashDeposit'])->name('ar-cashdeposit.storeCashDeposit');
         Route::put('ar-cashdeposit/update-cashdeposit/{id}', [ARCashDepositController::class, 'updateCashDeposit'])->name('ar-cashdeposit.updateCashDeposit');
         Route::delete('ar-cashdeposit/destroy-cashdeposit/{id}', [ARCashDepositController::class, 'destroyCashDeposit'])->name('ar-cashdeposit.destroyCashDeposit');
+
+        Route::get('sms', [SmsController::class, 'index'])->name('sms.index');
+        Route::put('sms/settings', [SmsController::class, 'updateSettings'])->name('sms.settings');
+        Route::post('sms/send', [SmsController::class, 'sendManual'])->name('sms.send');
+        Route::post('sms/reminders/{id}/send', [SmsController::class, 'sendReminderNow'])->name('sms.reminder.send');
 
     });

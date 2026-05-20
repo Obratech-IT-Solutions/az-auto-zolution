@@ -7,6 +7,27 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## PhilSMS (oil change reminders)
+
+1. Create a [PhilSMS](https://dashboard.philsms.com/register) account and copy your API token from the developer dashboard.
+2. Register an approved `sender_id` (max 11 characters).
+3. Add to `.env`:
+   - `PHILSMS_API_TOKEN=your_token`
+   - `PHILSMS_SENDER_ID=YourSender`
+4. Run `php artisan migrate` and `php artisan db:seed --class=SmsSettingsSeeder` (or full `db:seed`).
+5. Open **SMS** in the cashier or admin sidebar to adjust reminder days, interval months, and message template.
+6. On production, schedule `php artisan schedule:run` every minute (Windows Task Scheduler or cron). Reminders are sent daily at 8:00 AM when due. After a **successful automatic** send, that row is **removed** from the oil-change reminders table (history stays under **Recent SMS log**).
+
+Paid invoices with a job description containing the configured match text (default: `change oil`) schedule an SMS reminder. Use **+ Change Oil** on the invoice Jobs section or type any description manually.
+
+After importing invoices or `invoice_jobs` directly into the database, reminders are not created until you run:
+
+`php artisan sms:sync-paid-invoices`
+
+Use `php artisan sms:sync-paid-invoices --invoicing` if you only want rows where `source_type` is `invoicing`.
+
+The oil-change **service date** is the earliest of: invoice `created_at`, `appointment_date` (if set), and each matching labor line’s `created_at` (capped so it is never after today). That fixes many bad **due dates** from imports. **Pending** or **failed** reminders whose **due date is before today** are removed automatically when you open the SMS page, when the daily send job runs, or when you run `sms:sync-paid-invoices`; new syncs will not recreate them.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

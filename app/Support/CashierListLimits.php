@@ -15,4 +15,6 @@ final class CashierListLimits
 
     /** Cap FullCalendar payload on home. */
     public const HOME_APPOINTMENTS_MAX = 500;
+
+    public const SMS_REMINDERS_PER_PAGE = 15;
 }

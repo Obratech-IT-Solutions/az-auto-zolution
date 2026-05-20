@@ -9,8 +9,10 @@ use App\Models\Invoice;
 use App\Models\Technician;
 use App\Models\Vehicle;
 use App\Services\ClientVehicleResolver;
+use App\Services\OilChangeReminderService;
 use App\Support\CashierListLimits;
 use App\Support\InvoiceStaffStamp;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -142,7 +144,9 @@ class InvoiceController extends Controller
             $manualCustomer = '';
         }
 
-        DB::transaction(function () use ($request, $clientId, $vehicleId, $manualCustomer, $date) {
+        $invoiceId = null;
+
+        DB::transaction(function () use ($request, $clientId, $vehicleId, $manualCustomer, $date, &$invoiceId) {
             $invoice = new Invoice;
             $invoice->forceFill(array_merge([
                 'client_id' => $clientId,
@@ -212,9 +216,11 @@ class InvoiceController extends Controller
                     }
                 }
             }
+
+            $invoiceId = $invoice->id;
         });
 
-        return redirect()->route('cashier.invoice.index')->with('success', 'Invoice created!');
+        return $this->redirectAfterInvoiceSave($invoiceId, 'Invoice created!');
     }
 
     public function edit($id)
@@ -270,7 +276,10 @@ class InvoiceController extends Controller
                 }
             });
 
-            return redirect()->route('cashier.invoice.index')->with('success', 'Status updated!');
+            $invoice->refresh();
+            $invoice->load(['jobs', 'client', 'vehicle']);
+
+            return $this->redirectAfterInvoiceSave($invoice->id, 'Status updated!');
         }
 
         $request->validate([
@@ -389,7 +398,28 @@ class InvoiceController extends Controller
             }
         });
 
-        return redirect()->route('cashier.invoice.index')->with('success', 'Invoice updated!');
+        return $this->redirectAfterInvoiceSave($invoice->id, 'Invoice updated!');
+    }
+
+    protected function redirectAfterInvoiceSave(?int $invoiceId, string $successMessage): RedirectResponse
+    {
+        $redirect = redirect()->route('cashier.invoice.index')->with('success', $successMessage);
+
+        if ($invoiceId === null) {
+            return $redirect;
+        }
+
+        $invoice = Invoice::with(['jobs', 'client', 'vehicle'])->find($invoiceId);
+        if (! $invoice) {
+            return $redirect;
+        }
+
+        $result = app(OilChangeReminderService::class)->syncForInvoice($invoice);
+        if ($result['warning']) {
+            $redirect->with('warning', $result['warning']);
+        }
+
+        return $redirect;
     }
 
     public function destroy($id)

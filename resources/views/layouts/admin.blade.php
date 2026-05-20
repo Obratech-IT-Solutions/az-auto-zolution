@@ -199,6 +199,7 @@
       <a href="{{ route('admin.material-summary') }}"><i class="fas fa-clipboard-list"></i> Material Summary</a>
       <a href="{{ route('admin.labor-summary') }}"><i class="fas fa-users"></i> Labor Summary</a>
       <a href="{{ route('admin.trends') }}"><i class="fas fa-chart-line"></i> Trends</a>
+      <a href="{{ route('admin.sms.index') }}"><i class="fas fa-sms"></i> SMS</a>
       </nav>
       <div class="sidebar-footer">
         @include('partials.sidebar-signed-in-user')
